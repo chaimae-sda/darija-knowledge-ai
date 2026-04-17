@@ -1202,6 +1202,7 @@
   background: linear-gradient(180deg, #7f58f6 0%, #693edf 18%, #f6f5fb 18%, #f6f5fb 100%);
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .journey-screen__header {
@@ -1319,6 +1320,100 @@
   right: 12%;
   font-size: 3rem;
   animation: floatTreasure 2s ease-in-out infinite;
+}
+
+.journey-xp-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 2px;
+  margin-bottom: 4px;
+}
+
+.journey-xp-bar__track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(91, 103, 202, 0.15);
+  overflow: hidden;
+}
+
+.journey-xp-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--violet-500, #7c3aed), var(--violet-700, #5b21b6));
+  transition: width 0.6s ease;
+}
+
+.journey-xp-bar__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  text-align: right;
+}
+
+.journey-no-questions {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  z-index: 20;
+  padding: 24px;
+}
+
+.journey-no-questions__card {
+  background: var(--surface-1, #fff);
+  border-radius: 24px;
+  padding: 28px 22px 22px;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  position: relative;
+  box-shadow: var(--shadow-lg, 0 16px 48px rgba(0,0,0,0.18));
+}
+
+.journey-no-questions__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(91, 103, 202, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--text-secondary, #6b7280);
+}
+
+.journey-no-questions__emoji {
+  font-size: 2.5rem;
+}
+
+.journey-no-questions__card strong {
+  font-size: 1rem;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.journey-no-questions__card p {
+  font-size: 0.82rem;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.journey-no-questions__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
 }
 
 @keyframes floatTreasure {
@@ -1873,6 +1968,31 @@
 :root[data-theme='dark'] .logout-button {
   background: rgba(216, 68, 105, 0.14);
   color: #ff8cab;
+}
+
+:root[data-theme='dark'] .journey-xp-bar__track {
+  background: rgba(170, 149, 255, 0.12);
+}
+
+:root[data-theme='dark'] .journey-xp-bar__label {
+  color: #c0bbdf;
+}
+
+:root[data-theme='dark'] .journey-no-questions__card {
+  background: rgba(22, 27, 46, 0.98);
+}
+
+:root[data-theme='dark'] .journey-no-questions__card strong {
+  color: #f7f4ff;
+}
+
+:root[data-theme='dark'] .journey-no-questions__card p {
+  color: #c0bbdf;
+}
+
+:root[data-theme='dark'] .journey-no-questions__close {
+  background: rgba(170, 149, 255, 0.1);
+  color: #c0bbdf;
 }
 
 @media (max-width: 520px) {

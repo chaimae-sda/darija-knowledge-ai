@@ -232,11 +232,14 @@ const normalizeUser = (user) => {
       readingTime: user.stats?.readingTime || 0,
       quizzesPassed: user.stats?.quizzesPassed || 0,
       bestStreak: user.stats?.bestStreak || 0,
+      currentStreak: user.stats?.currentStreak || 0,
+      lastActiveDate: user.stats?.lastActiveDate || null,
       pagesRead: user.stats?.pagesRead || 0,
       importedCount: user.stats?.importedCount || 0,
       scannedCount: user.stats?.scannedCount || 0,
       perfectQuizzes: user.stats?.perfectQuizzes || 0,
       audioSessions: user.stats?.audioSessions || 0,
+      completedTextIds: Array.isArray(user.stats?.completedTextIds) ? user.stats.completedTextIds : [],
     },
   };
 };
@@ -504,11 +507,14 @@ const loadMockDb = () => {
       readingTime: user.stats?.readingTime || 0,
       quizzesPassed: user.stats?.quizzesPassed || 0,
       bestStreak: user.stats?.bestStreak || 0,
+      currentStreak: user.stats?.currentStreak || 0,
+      lastActiveDate: user.stats?.lastActiveDate || null,
       pagesRead: user.stats?.pagesRead || 0,
       importedCount: user.stats?.importedCount || 0,
       scannedCount: user.stats?.scannedCount || 0,
       perfectQuizzes: user.stats?.perfectQuizzes || 0,
       audioSessions: user.stats?.audioSessions || 0,
+      completedTextIds: Array.isArray(user.stats?.completedTextIds) ? user.stats.completedTextIds : [],
     },
   }));
   const texts = mergedDb.texts.map((text) => ({
@@ -540,14 +546,15 @@ const saveMockDb = (db) => {
   localStorage.setItem(STORAGE_KEYS.texts, JSON.stringify(db.texts));
 };
 
-const getStoredSessionUser = () => safeJsonParse(localStorage.getItem(STORAGE_KEYS.user), null);
+const getStoredSessionUser = () => safeJsonParse(sessionStorage.getItem(STORAGE_KEYS.user), null);
 
 const persistSessionUser = (user) => {
-  localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
+  sessionStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
   emitUserSync(user);
 };
 
 const clearSessionUser = () => {
+  sessionStorage.removeItem(STORAGE_KEYS.user);
   localStorage.removeItem(STORAGE_KEYS.user);
   emitUserSync(null);
 };
@@ -604,9 +611,9 @@ const mockHandlers = {
     db.users.push({ ...newUser, password });
     saveMockDb(db);
     persistSessionUser(newUser);
-    localStorage.setItem(STORAGE_KEYS.token, `mock-token-${newUser.id}`);
+    sessionStorage.setItem(STORAGE_KEYS.token, `mock-token-${newUser.id}`);
 
-    return { token: localStorage.getItem(STORAGE_KEYS.token), user: newUser };
+    return { token: sessionStorage.getItem(STORAGE_KEYS.token), user: newUser };
   },
 
   login: async ({ email, password }) => {
@@ -619,8 +626,8 @@ const mockHandlers = {
 
     const user = normalizeUser(found);
     persistSessionUser(user);
-    localStorage.setItem(STORAGE_KEYS.token, `mock-token-${user.id}`);
-    return { token: localStorage.getItem(STORAGE_KEYS.token), user };
+    sessionStorage.setItem(STORAGE_KEYS.token, `mock-token-${user.id}`);
+    return { token: sessionStorage.getItem(STORAGE_KEYS.token), user };
   },
 
   getProfile: async () => {
@@ -808,6 +815,28 @@ const mockHandlers = {
     }
 
     const nextXp = (user.xp || 0) + xpAmount;
+
+    // Daily streak tracking
+    const today = new Date().toDateString();
+    const lastActiveDate = user.stats?.lastActiveDate;
+    let currentStreak = user.stats?.currentStreak || 0;
+    if (!lastActiveDate) {
+      currentStreak = 1;
+    } else if (lastActiveDate === today) {
+      currentStreak = Math.max(currentStreak, 1);
+    } else {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      currentStreak = lastActiveDate === yesterday.toDateString() ? currentStreak + 1 : 1;
+    }
+    const bestStreak = Math.max(user.stats?.bestStreak || 0, currentStreak);
+
+    // Track completed text quizzes
+    const completedTextIds = [...(user.stats?.completedTextIds || [])];
+    if (metadata.quizCompleted && metadata.textId && !completedTextIds.includes(metadata.textId)) {
+      completedTextIds.push(metadata.textId);
+    }
+
     const updatedUser = applyAchievements(
       {
         ...user,
@@ -817,7 +846,9 @@ const mockHandlers = {
         stats: {
           ...(user.stats || {}),
           quizzesPassed: (user.stats?.quizzesPassed || 0) + (metadata.quizCompleted ? 1 : 0),
-          bestStreak: Math.max((user.stats?.bestStreak || 0) + 1, 1),
+          bestStreak,
+          currentStreak,
+          lastActiveDate: today,
           readingTime: user.stats?.readingTime || 0,
           pagesRead: user.stats?.pagesRead || 0,
           importedCount: user.stats?.importedCount || 0,
@@ -826,6 +857,7 @@ const mockHandlers = {
             (user.stats?.perfectQuizzes || 0) +
             (metadata.quizCompleted && metadata.totalQuestions > 0 && metadata.correctAnswers === metadata.totalQuestions ? 1 : 0),
           audioSessions: user.stats?.audioSessions || 0,
+          completedTextIds,
         },
       },
       getUserTexts(db, user.id),
@@ -921,8 +953,8 @@ const request = async ({ path, method = 'GET', body, fallback }) => {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(localStorage.getItem(STORAGE_KEYS.token)
-          ? { Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.token)}` }
+        ...(sessionStorage.getItem(STORAGE_KEYS.token)
+          ? { Authorization: `Bearer ${sessionStorage.getItem(STORAGE_KEYS.token)}` }
           : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -942,12 +974,18 @@ export const apiClient = {
   USER_SYNC_EVENT,
 
   setToken: (token) => {
-    localStorage.setItem(STORAGE_KEYS.token, token);
+    sessionStorage.setItem(STORAGE_KEYS.token, token);
+    localStorage.removeItem(STORAGE_KEYS.token);
   },
 
-  getToken: () => localStorage.getItem(STORAGE_KEYS.token),
+  getToken: () => sessionStorage.getItem(STORAGE_KEYS.token),
 
   getStoredUser: () => getStoredSessionUser(),
+
+  clearLegacyStorage: () => {
+    localStorage.removeItem(STORAGE_KEYS.user);
+    localStorage.removeItem(STORAGE_KEYS.token);
+  },
 
   register: async (username, email, password) =>
     request({
@@ -968,6 +1006,7 @@ export const apiClient = {
   loginDemo: async () => mockHandlers.login({ email: 'test@example.com', password: 'password' }),
 
   logout: () => {
+    sessionStorage.removeItem(STORAGE_KEYS.token);
     localStorage.removeItem(STORAGE_KEYS.token);
     clearSessionUser();
   },

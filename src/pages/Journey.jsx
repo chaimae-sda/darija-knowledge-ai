@@ -1,16 +1,19 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { ChevronLeft, MoreHorizontal } from 'lucide-react';
+import { BookOpen, ChevronLeft, FileUp, MoreHorizontal, X } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { apiClient } from '../services/apiService';
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 
-const Journey = ({ onBack, onStartQuiz }) => {
+const XP_PER_LEVEL = 500;
+
+const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
   const { user } = useContext(AuthContext);
   const { t } = useI18n();
   const [journeyData, setJourneyData] = useState(null);
   const [texts, setTexts] = useState([]);
+  const [showNoQuestionsPrompt, setShowNoQuestionsPrompt] = useState(false);
   const nodes = t('journey.nodes').map((label, index) => ({
     id: index + 1,
     label,
@@ -29,17 +32,38 @@ const Journey = ({ onBack, onStartQuiz }) => {
   }, [user?.xp]);
 
   const handleNodeClick = (levelId, isUnlocked) => {
-    if (!isUnlocked || texts.length === 0 || !onStartQuiz) {
+    if (!isUnlocked || !onStartQuiz) {
       return;
     }
 
-    const text = texts[(levelId - 1) % texts.length];
+    if (texts.length === 0) {
+      setShowNoQuestionsPrompt(true);
+      return;
+    }
+
+    const completedTextIds = user?.stats?.completedTextIds || [];
+    const allCompleted = texts.length > 0 && texts.every((text) => completedTextIds.includes(text._id));
+
+    if (allCompleted) {
+      setShowNoQuestionsPrompt(true);
+      return;
+    }
+
+    const unquizzedTexts = texts.filter((text) => !completedTextIds.includes(text._id));
+    const pool = unquizzedTexts.length > 0 ? unquizzedTexts : texts;
+    const text = pool[(levelId - 1) % pool.length];
     onStartQuiz(text._id);
   };
 
   if (!journeyData) {
     return <div className="page-feedback">{t('journey.loading')}</div>;
   }
+
+  const currentLevel = journeyData.currentLevel;
+  const isMaxLevel = currentLevel >= nodes.length;
+  const xpProgress = journeyData.xpProgress || 0;
+  const progressPercent = isMaxLevel ? 100 : Math.min(100, (xpProgress / XP_PER_LEVEL) * 100);
+  const xpToNext = isMaxLevel ? 0 : XP_PER_LEVEL - xpProgress;
 
   return (
     <section className="journey-screen">
@@ -67,10 +91,20 @@ const Journey = ({ onBack, onStartQuiz }) => {
         </div>
       </div>
 
+      <div className="journey-xp-bar">
+        <div className="journey-xp-bar__track">
+          <div className="journey-xp-bar__fill" style={{ width: `${progressPercent}%` }} />
+        </div>
+        <span className="journey-xp-bar__label">
+          {isMaxLevel
+            ? t('journey.maxLevel')
+            : t('journey.xpToNextLevel', { xp: xpToNext })}
+        </span>
+      </div>
+
       <div className="journey-map">
         <img src={assetUrl('journey_map.png')} alt={t('journey.mapAlt')} className="journey-map__image" />
         {nodes.map((node, index) => {
-          const currentLevel = journeyData.currentLevel;
           const isComplete = index + 1 < currentLevel;
           const isCurrent = index + 1 === currentLevel;
           const isUnlocked = isComplete || isCurrent;
@@ -91,8 +125,50 @@ const Journey = ({ onBack, onStartQuiz }) => {
 
         <div className="journey-treasure">🎁</div>
       </div>
+
+      {showNoQuestionsPrompt && (
+        <div className="journey-no-questions">
+          <div className="journey-no-questions__card">
+            <button
+              type="button"
+              className="journey-no-questions__close"
+              onClick={() => setShowNoQuestionsPrompt(false)}
+            >
+              <X size={18} />
+            </button>
+            <div className="journey-no-questions__emoji">🎉</div>
+            <strong>{t('journey.noQuestionsTitle')}</strong>
+            <p>{t('journey.noQuestionsBody')}</p>
+            <div className="journey-no-questions__actions">
+              <button
+                type="button"
+                className="action-button action-button--primary"
+                onClick={() => {
+                  setShowNoQuestionsPrompt(false);
+                  if (onNavigate) onNavigate('scan');
+                }}
+              >
+                <FileUp size={16} />
+                <span>{t('journey.addMoreDocs')}</span>
+              </button>
+              <button
+                type="button"
+                className="action-button action-button--outline"
+                onClick={() => {
+                  setShowNoQuestionsPrompt(false);
+                  if (onNavigate) onNavigate('library');
+                }}
+              >
+                <BookOpen size={16} />
+                <span>{t('journey.goToLibrary')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
 
 export default Journey;
+

@@ -10,6 +10,8 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const restoreSession = async () => {
+      apiClient.clearLegacyStorage();
+
       if (import.meta.env.DEV) {
         apiClient.logout();
         setUser(null);
