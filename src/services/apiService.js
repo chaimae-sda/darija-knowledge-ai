@@ -88,10 +88,15 @@ const generateQuestionsFromText = (text) => {
   const darijaKeywords = getKeywordPool(darijaText || sourceText);
   const allKeywords = getKeywordPool(sourceText);
 
-  const frSentences = originalText
+  const frSentences = (originalText || sourceText)
     .split(/[.!?\n]+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 24);
+
+  const darijaSentences = (darijaText || sourceText)
+    .split(/[.!?؟\n]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 12);
 
   const firstFrAnswer = frKeywords[0] || allKeywords[0] || title;
   const secondFrAnswer = frKeywords[1] || allKeywords[1] || 'apprentissage';
@@ -144,8 +149,8 @@ const generateQuestionsFromText = (text) => {
       questionTextEn: frSentences[0]
         ? `What idea do you get from this passage: "${frSentences[0].slice(0, 44)}..."?`
         : `What is the main idea of this document?`,
-      questionTextDarija: frSentences[0]
-        ? `شنو الفكرة اللي كتفهم من هاد الجزء: "${frSentences[0].slice(0, 44)}..."؟`
+      questionTextDarija: darijaSentences[0]
+        ? `شنو الفكرة اللي كتفهم من هاد الجزء: "${darijaSentences[0].slice(0, 44)}..."؟`
         : `شنو الفكرة الرئيسية فهاد الوثيقة؟`,
       correctAnswerFr: thirdFrAnswer,
       correctAnswerEn: thirdFrAnswer,
