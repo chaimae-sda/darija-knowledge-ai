@@ -1,44 +1,16 @@
 const HF_API_KEY = import.meta.env.VITE_HF_API_KEY;
-const ATLASIA_MODEL = 'atlasia/Terjman-Ultra';
+const ATLASIA_MODEL = 'atlasia/Terjman-Ultra-v2.0';
 const HF_INFERENCE_URL = `https://api-inference.huggingface.co/models/${ATLASIA_MODEL}`;
 
 const DEFAULT_MODEL_WAIT_SECONDS = 20;
 const MAX_MODEL_WAIT_MS = 30000;
-
-// Strip Mistral special tokens from user content to prevent prompt injection.
-const sanitizeForPrompt = (text) =>
-  text.replace(/<s>|<\/s>|\[INST\]|\[\/INST\]/gi, '');
-
-// Terjman-Ultra is a Mistral-based instruction-following model.
-// It requires the standard [INST] prompt format for translation.
-const buildTranslationPrompt = (text) =>
-  `<s>[INST] Translate the following text to Moroccan Darija:\n${sanitizeForPrompt(text)}\n[/INST]`;
-
-const normalizeAtlasiaResponse = (data) => {
-  // Translation pipeline models (MarianMT) return translation_text
-  if (Array.isArray(data) && data[0]?.translation_text) {
-    return data[0].translation_text.trim();
-  }
-  // Text-generation models (Mistral-based Terjman-Ultra) return generated_text
-  if (Array.isArray(data) && data[0]?.generated_text) {
-    return data[0].generated_text.trim();
-  }
-  if (typeof data === 'string') {
-    return data.trim();
-  }
-  return null;
-};
 
 const translateChunk = async (chunk, headers, retries = 2) => {
   const response = await fetch(HF_INFERENCE_URL, {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      inputs: buildTranslationPrompt(chunk.trim()),
-      parameters: {
-        max_new_tokens: 512,
-        return_full_text: false,
-      },
+      inputs: chunk.trim(),
     }),
   });
 
@@ -57,25 +29,32 @@ const translateChunk = async (chunk, headers, retries = 2) => {
   }
 
   const data = await response.json();
-  const translated = normalizeAtlasiaResponse(data);
-  if (!translated) {
-    throw new Error('Empty translation response from Atlasia');
+
+  // Translation pipeline models return an array with translation_text
+  if (Array.isArray(data) && data[0]?.translation_text) {
+    return data[0].translation_text.trim();
+  }
+  if (typeof data === 'string') {
+    return data.trim();
   }
 
-  return translated;
+  throw new Error('Empty or unexpected translation response from Atlasia');
 };
 
 export const aiService = {
   translate: async (text) => {
     if (!text || text.trim().length === 0) return '';
 
+    if (!HF_API_KEY) {
+      console.error('Translation unavailable: VITE_HF_API_KEY is not configured.');
+      return text;
+    }
+
     try {
       const headers = {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${HF_API_KEY}`,
       };
-      if (HF_API_KEY) {
-        headers['Authorization'] = `Bearer ${HF_API_KEY}`;
-      }
 
       // Chunk to stay within model input limits
       const maxChars = 400;
