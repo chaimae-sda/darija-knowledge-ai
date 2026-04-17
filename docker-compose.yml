@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: darija-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: darija-knowledge-ai
+    networks:
+      - darija-network
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: darija-backend
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/darija-knowledge-ai
+      JWT_SECRET: ${JWT_SECRET:-your_secret_key_here}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      NODE_ENV: ${NODE_ENV:-development}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    depends_on:
+      - mongodb
+    networks:
+      - darija-network
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: darija-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api}
+    depends_on:
+      - backend
+    networks:
+      - darija-network
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+
+volumes:
+  mongodb_data:
+
+networks:
+  darija-network:
+    driver: bridge

@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+  --violet-900: #3f1d89;
+  --violet-700: #6d46df;
+  --violet-600: #7c58f4;
+  --violet-500: #8a6eff;
+  --violet-100: #efe9ff;
+  --violet-050: #f6f3ff;
+  --mint-500: #3fc779;
+  --mint-100: #e7f8ee;
+  --sky-100: #e9f1ff;
+  --gold-100: #fff0c8;
+  --bg: #f4f1fb;
+  --surface: #ffffff;
+  --surface-soft: #faf8ff;
+  --text: #21174d;
+  --text-muted: #766ea4;
+  --text-soft: #9f98c2;
+  --border: #ebe5fb;
+  --shadow-lg: 0 24px 70px rgba(86, 58, 170, 0.18);
+  --shadow-md: 0 14px 32px rgba(98, 76, 179, 0.14);
+  --shadow-sm: 0 8px 20px rgba(82, 57, 168, 0.1);
+  --radius-xl: 32px;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --violet-900: #5b3bc4;
+  --violet-700: #b39aff;
+  --violet-600: #9474ff;
+  --violet-500: #7c58f4;
+  --violet-100: #2d2148;
+  --violet-050: #1e1734;
+  --mint-500: #67d99f;
+  --mint-100: #153126;
+  --sky-100: #1a2742;
+  --gold-100: #463714;
+  --bg: #0a0e19;
+  --surface: #161b2c;
+  --surface-soft: #1e2438;
+  --text: #f6f3ff;
+  --text-muted: #c0bbdf;
+  --text-soft: #9993bc;
+  --border: #2d3450;
+  --shadow-lg: 0 28px 80px rgba(0, 0, 0, 0.42);
+  --shadow-md: 0 16px 36px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Nunito', sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(124, 88, 244, 0.18), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(63, 199, 121, 0.14), transparent 24%),
+    var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+.text-darija {
+  direction: rtl;
+  font-family: 'Baloo Bhaijaan 2', cursive;
+  line-height: 1.8;
+}
