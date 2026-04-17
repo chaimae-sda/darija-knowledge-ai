@@ -205,7 +205,7 @@ const AppContent = () => {
       case 'scan':
         return <Scan onBack={() => navigateToTab('home')} onTextScanned={handleTextScanned} />;
       case 'journey':
-        return <Journey onBack={() => navigateToTab('home')} onStartQuiz={navigateToQuiz} />;
+        return <Journey onBack={() => navigateToTab('home')} onStartQuiz={navigateToQuiz} onNavigate={navigateToTab} />;
       case 'profile':
         return <Profile />;
       default:

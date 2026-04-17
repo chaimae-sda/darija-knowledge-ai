@@ -84,6 +84,7 @@ const Quiz = ({ textId, onBack, onComplete }) => {
       quizCompleted: true,
       correctAnswers,
       totalQuestions: questions.length,
+      textId,
     });
     if (onComplete) {
       onComplete();
