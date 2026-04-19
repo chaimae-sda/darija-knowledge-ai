@@ -10,9 +10,21 @@ const initialState = {
   email: '',
   password: '',
   confirmPassword: '',
+  selectedAvatar: '',
 };
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
+
+// 4 cute cartoon avatar options using DiceBear
+const AVATAR_OPTIONS = [
+  { id: 'avatar1', seed: 'Gazi', style: 'adventurer' },
+  { id: 'avatar2', seed: 'Zaki', style: 'adventurer' },
+  { id: 'avatar3', seed: 'Nour', style: 'adventurer' },
+  { id: 'avatar4', seed: 'Amir', style: 'adventurer' },
+];
+
+const getAvatarUrl = (seed, style) =>
+  `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf&backgroundType=gradientLinear`;
 
 const Auth = () => {
   const { login, register } = useContext(AuthContext);
@@ -47,7 +59,7 @@ const Auth = () => {
           throw new Error(t('auth.passwordMismatch'));
         }
 
-        await register(formData.username, formData.email, formData.password);
+        await register(formData.username, formData.email, formData.password, formData.selectedAvatar);
       }
     } catch (err) {
       setError(err.message || t('auth.genericError'));
@@ -97,7 +109,7 @@ const Auth = () => {
             </div>
           </div>
           <img src={assetUrl('logo-auth-white.png')} alt="Darija Knowledge AI" className="auth-showcase__logo" decoding="async" />
-          <h1>{language === 'darija' ? 'درجها' : 'drjha'}</h1>
+          <h1>{language === 'darija' ? 'درجها' : 'DRJHA'}</h1>
           <p className="auth-showcase__text">
             {t('auth.showcaseText')}
           </p>
@@ -117,20 +129,47 @@ const Auth = () => {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             {!isLogin && (
-              <label className="field">
-                <span>{t('auth.name')}</span>
-                <div className="field__control">
-                  <User size={18} />
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder={t('auth.namePlaceholder')}
-                    required={!isLogin}
-                  />
+              <>
+                <label className="field">
+                  <span>{t('auth.name')}</span>
+                  <div className="field__control">
+                    <User size={18} />
+                    <input
+                      type="text"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      placeholder={t('auth.namePlaceholder')}
+                      required={!isLogin}
+                    />
+                  </div>
+                </label>
+
+                <div className="auth-avatar-section">
+                  <span className="auth-avatar-label">{t('auth.chooseAvatar') || 'Choisis ton avatar'}</span>
+                  <div className="auth-avatar-grid">
+                    {AVATAR_OPTIONS.map((avatar) => (
+                      <button
+                        key={avatar.id}
+                        type="button"
+                        className={`auth-avatar-option ${formData.selectedAvatar === avatar.id ? 'is-selected' : ''}`}
+                        onClick={() => setFormData((f) => ({ ...f, selectedAvatar: avatar.id }))}
+                        aria-label={avatar.label}
+                      >
+                        <img
+                          src={getAvatarUrl(avatar.seed, avatar.style)}
+                          alt={avatar.label}
+                          className="auth-avatar-option__img"
+                        />
+                        <span className="auth-avatar-option__name">{avatar.label}</span>
+                        {formData.selectedAvatar === avatar.id && (
+                          <span className="auth-avatar-option__check">✓</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </label>
+              </>
             )}
 
             <label className="field">

@@ -6,13 +6,11 @@ import { apiClient } from '../services/apiService';
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 const PATH_POINTS = [
-  { top: '84%', left: '48%' },
-  { top: '72%', left: '28%' },
-  { top: '61%', left: '58%' },
-  { top: '49%', left: '35%' },
-  { top: '38%', left: '61%' },
-  { top: '26%', left: '30%' },
-  { top: '15%', left: '49%' },
+  { top: '83%', left: '50%' },   // Découverte  – path entrance, bottom center
+  { top: '68%', left: '24%' },   // Apprenti    – first left curve
+  { top: '55%', left: '52%' },   // Curieux     – bridge crossing, center-right
+  { top: '36%', left: '26%' },   // Savant      – upper-left hilltop curve
+  { top: '20%', left: '58%' },   // Maître      – near treasure chest, upper-right
 ];
 
 const XP_PER_LEVEL = 500;
@@ -112,7 +110,7 @@ const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
           <span className="journey-progress-card__fill" style={{ width: `${levelProgress}%` }} />
         </div>
         <div className="journey-progress-card__meta">
-          <strong>Level {currentLevel}</strong>
+          <strong>{t('journey.currentLevel')} {currentLevel}</strong>
           <span>{xpToNextLevel} XP pour la suite</span>
         </div>
       </div>

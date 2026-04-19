@@ -99,6 +99,7 @@ const Home = ({
 
       <div className="home-hero">
         <img src={assetUrl('logo-violet.png')} alt="Darija Knowledge AI" className="home-hero__logo" decoding="async" />
+        <p className="home-hero__brand">DRJHA</p>
       </div>
 
       <div className="home-illustration-card">

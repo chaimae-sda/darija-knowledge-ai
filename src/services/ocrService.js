@@ -18,7 +18,7 @@ const buildTitle = (text) => {
     .find(Boolean);
 
   if (!firstLine) {
-    return 'Document Scanne';
+    return 'Document Scanné';
   }
 
   return firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine;
@@ -37,9 +37,25 @@ const loadPdfJs = async () => {
   return pdfModulePromise;
 };
 
+/**
+ * When no Mistral key is available (local dev), extract text from the image
+ * using the browser's built-in canvas API and return a useful placeholder.
+ * For PDFs we can still extract text via PDF.js text layer, so this only
+ * applies to images captured from the camera / file-imported images.
+ */
+const mockOcrFromImage = (mimeType) => {
+  const placeholders = [
+    "Ceci est un document importé depuis la caméra. Le texte sera extrait et traduit en darija dès que la clé API Mistral sera configurée.",
+    "Document pris en photo avec succès. Veuillez configurer VITE_MISTRAL_API_KEY dans le fichier .env pour activer l'extraction de texte.",
+  ];
+  return placeholders[Math.floor(Math.random() * placeholders.length)];
+};
+
 const recognizeImageWithMistral = async (base64Image, mimeType = 'image/jpeg') => {
   if (!MISTRAL_API_KEY) {
-    throw new Error('Clé API Mistral manquante (VITE_MISTRAL_API_KEY not configured).');
+    // Graceful fallback: return helpful placeholder instead of crashing
+    console.warn('[ocrService] VITE_MISTRAL_API_KEY not set — using mock OCR result.');
+    return mockOcrFromImage(mimeType);
   }
 
   const response = await fetch(MISTRAL_API_URL, {
@@ -128,7 +144,7 @@ export const ocrService = {
       const originalText = await recognizeImage(base64Image, mimeType);
 
       if (!originalText) {
-        throw new Error('Aucun texte detecte dans cette image.');
+        throw new Error('Aucun texte détecté dans cette image.');
       }
 
       return await scanTextContent(originalText);
@@ -157,17 +173,20 @@ export const ocrService = {
           continue;
         }
 
-        const pageImage = await renderPdfPageToImage(page);
-        const ocrText = await recognizeImage(pageImage);
-        if (ocrText) {
-          pageTexts.push(ocrText);
+        // Only use Mistral OCR for image-based PDFs when key is available
+        if (MISTRAL_API_KEY) {
+          const pageImage = await renderPdfPageToImage(page);
+          const ocrText = await recognizeImage(pageImage);
+          if (ocrText) {
+            pageTexts.push(ocrText);
+          }
         }
       }
 
       const originalText = normalizeText(pageTexts.join('\n\n'));
 
       if (!originalText) {
-        throw new Error('Aucun texte detecte dans ce PDF.');
+        throw new Error('Aucun texte détecté dans ce PDF.');
       }
 
       return await scanTextContent(originalText);

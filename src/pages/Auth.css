@@ -126,8 +126,8 @@
 }
 
 .auth-showcase__logo {
-  width: 108px;
-  margin: 30px 0 18px;
+  width: 140px;
+  margin: 28px 0 16px;
   filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.18));
 }
 
@@ -142,6 +142,83 @@
   margin: 2px 0 0;
   font-size: 1.15rem;
   font-weight: 800;
+}
+
+/* Avatar selection grid */
+.auth-avatar-section {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-avatar-label {
+  color: var(--text-muted);
+  font-size: 0.83rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.auth-avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.auth-avatar-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 18px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.auth-avatar-option:hover {
+  border-color: rgba(109, 70, 223, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(109, 70, 223, 0.15);
+}
+
+.auth-avatar-option.is-selected {
+  border-color: var(--violet-700);
+  background: var(--violet-050);
+  box-shadow: 0 8px 20px rgba(109, 70, 223, 0.2);
+}
+
+.auth-avatar-option__img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--violet-100);
+}
+
+.auth-avatar-option__name {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.auth-avatar-option__check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--violet-700);
+  color: #fff;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(109, 70, 223, 0.4);
 }
 
 .auth-showcase__text {
@@ -368,7 +445,7 @@
   }
 
   .auth-showcase__logo {
-    width: 88px;
+    width: 110px;
     margin: 20px 0 14px;
   }
 
@@ -404,5 +481,19 @@
   .auth-submit,
   .auth-demo {
     min-height: 52px;
+  }
+
+  .auth-card {
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+
+  .auth-avatar-grid {
+    gap: 6px;
+  }
+
+  .auth-avatar-option__img {
+    width: 40px;
+    height: 40px;
   }
 }

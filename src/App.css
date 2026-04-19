@@ -229,12 +229,25 @@
 
 .home-hero {
   text-align: center;
-  padding-top: 8px;
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .home-hero__logo {
-  width: min(220px, 58vw);
-  margin: 0 auto 2px;
+  width: min(190px, 50vw);
+  margin: 0;
+}
+
+.home-hero__brand {
+  margin: -6px 0 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--violet-700);
+  text-align: center;
+  font-family: 'Baloo Bhaijaan 2', cursive;
 }
 
 .home-hero__logo--blend {
@@ -447,10 +460,10 @@
   position: relative;
   margin: 4px 0 8px;
   border-radius: 24px;
-  padding: 14px 12px;
+  padding: 10px;
   background: linear-gradient(180deg, #fff9ec 0%, #ffffff 100%);
   overflow: hidden;
-  min-height: 152px;
+  min-height: 140px;
   box-shadow: var(--shadow-md);
 }
 
@@ -475,6 +488,7 @@
   position: relative;
   z-index: 1;
   width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
@@ -1676,6 +1690,124 @@
   cursor: pointer;
 }
 
+/* Profile XP bar card */
+.profile-xp-bar-card {
+  background: linear-gradient(135deg, var(--violet-700), var(--violet-500));
+  border-radius: 20px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  color: #fff;
+}
+
+.profile-xp-bar-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.profile-xp-bar-card__header span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.84;
+}
+
+.profile-xp-bar-card__track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.profile-xp-bar-card__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+
+.profile-xp-bar-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+/* Profile stats grid */
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+
+.profile-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-stat-item__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--violet-100);
+  color: var(--violet-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.profile-stat-item__icon--green {
+  background: rgba(63, 199, 121, 0.14);
+  color: #2eaf73;
+}
+
+.profile-stat-item__icon--orange {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+
+.profile-stat-item__icon--blue {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.profile-stat-item__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-stat-item__content span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-stat-item__content strong {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
 .quiz-screen {
   padding: 14px;
   background: linear-gradient(180deg, #ffffff 0%, #faf8ff 100%);
@@ -2205,5 +2337,69 @@
   .stats-grid,
   .badge-row--expanded {
     grid-template-columns: 1fr;
+  }
+}
+
+:root[data-theme='dark'] .profile-stat-item {
+  background-color: rgba(22, 27, 46, 0.92);
+}
+
+:root[data-theme='dark'] .profile-stat-item__content span {
+  color: #c0bbdf;
+}
+
+:root[data-theme='dark'] .profile-stat-item__content strong {
+  color: #f6f3ff;
+}
+
+:root[data-theme='dark'] .profile-xp-bar-card {
+  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+}
+
+@media (max-width: 520px) {
+  .auth-avatar-grid {
+    gap: 6px;
+  }
+
+  .auth-avatar-option__img {
+    width: 44px;
+    height: 44px;
+  }
+
+  .auth-avatar-option__name {
+    font-size: 0.62rem;
+  }
+
+  .auth-avatar-option {
+    padding: 8px 4px;
+    border-radius: 14px;
+  }
+
+  .profile-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .profile-stat-item {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .profile-stat-item__icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .profile-stat-item__content strong {
+    font-size: 0.92rem;
+  }
+
+  .home-hero__brand {
+    font-size: 1.3rem;
+    letter-spacing: 0.1em;
+  }
+
+  .home-hero__logo {
+    width: 140px;
   }
 }
