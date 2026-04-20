@@ -1162,6 +1162,7 @@ const loginWithSupabase = async (email, password) => {
     body: JSON.stringify({ email, password }),
   });
 
+  persistSessionTokens({ accessToken: data.access_token, refreshToken: data.refresh_token });
   const profile = await ensureSupabaseProfile(data.user, {
     username: data.user?.user_metadata?.username,
   });
@@ -1189,6 +1190,7 @@ const registerWithSupabase = async (username, email, password) => {
     return loginWithSupabase(email, password);
   }
 
+  persistSessionTokens({ accessToken: data.access_token, refreshToken: data.refresh_token });
   const profile = await ensureSupabaseProfile(data.user, { username });
   persistSession({
     accessToken: data.access_token,
