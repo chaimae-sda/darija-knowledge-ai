@@ -106,8 +106,13 @@ const Reading = ({ textId, onBack, onStartQuiz }) => {
   };
 
   const getDarijaTrack = () => {
-    const content = text?.darijaText?.trim();
-    return content ? { content, lang: 'ar-SA' } : null;
+    let content = text?.darijaText?.trim();
+    if (content) {
+      // Strip A-Z characters to avoid crashing the Arabic TTS voice, keep numbers and punctuation
+      content = content.replace(/[A-Za-zÀ-ÿ]/g, '').replace(/\s+/g, ' ').trim();
+      return { content, lang: 'ar-SA' };
+    }
+    return null;
   };
 
   const speakFrom = async (content, lang, startAt = 0) => {

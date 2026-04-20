@@ -694,7 +694,13 @@ const fetchJson = async (url, options = {}) => {
   return response.json();
 };
 
-const isSupabaseConfigured = () => Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+const isSupabaseConfigured = () => {
+  const token = getAccessToken();
+  if (token && token.startsWith('mock-token')) {
+    return false; // Force fallback to mock DB if the user logged in locally
+  }
+  return Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+};
 
 const supabaseAuthRequest = async (path, options) =>
   fetchJson(`${SUPABASE_URL}/auth/v1${path}`, {
