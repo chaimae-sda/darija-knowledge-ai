@@ -6,11 +6,11 @@ import { apiClient } from '../services/apiService';
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 const PATH_POINTS = [
-  { top: '82%', left: '46%' },   // Découverte  – bottom path entrance (wide part of dirt road)
-  { top: '67%', left: '22%' },   // Apprenti    – left curve near wooden signpost
-  { top: '57%', left: '50%' },   // Curieux     – on the wooden bridge crossing
-  { top: '38%', left: '23%' },   // Savant      – upper-left hilltop on the path
-  { top: '23%', left: '55%' },   // Maître      – dirt path leading to treasure chest
+  { top: '80%', left: '45%' },
+  { top: '63%', left: '28%' },
+  { top: '48%', left: '55%' },
+  { top: '33%', left: '30%' },
+  { top: '18%', left: '52%' },
 ];
 
 const XP_PER_LEVEL = 500;
