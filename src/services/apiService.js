@@ -120,6 +120,8 @@ const MAX_KEYWORD_WEIGHT = 8;
 const KEYWORD_WEIGHT_DIVISOR = 4;
 const MAX_SENTENCES_FOR_CONCEPTS = 18;
 const MAX_PHRASE_CANDIDATES = 240;
+const MIN_QUALITY_WORD_COUNT = 2;
+const MAX_SINGLE_WORD_OPTIONS = 1;
 
 const normalizeToken = (token = '') =>
   token
@@ -242,7 +244,7 @@ const countWords = (value = '') =>
   value
     .trim()
     .split(/\s+/)
-    .filter(Boolean).length;
+    .filter((word) => word.length > 0).length;
 
 const filterByMinWordCount = (items = [], minWordCount = 1) => {
   if (minWordCount <= 1) {
@@ -255,8 +257,20 @@ const filterByMinWordCount = (items = [], minWordCount = 1) => {
 
 const getPreferredConcepts = (concepts = [], fallbackConcepts = []) => {
   const merged = dedupeCaseInsensitive([...concepts, ...fallbackConcepts]);
-  const multiWord = merged.filter((item) => countWords(item) >= 2);
-  return multiWord.length ? multiWord : merged;
+  const multiWordConcepts = merged.filter((item) => countWords(item) >= MIN_QUALITY_WORD_COUNT);
+  return multiWordConcepts.length ? multiWordConcepts : merged;
+};
+
+const getBackupLabelsByLocale = (localeHint = '') => {
+  if (/[\u0600-\u06FF]/u.test(localeHint)) {
+    return ['معلومة مرتبطة بالنص', 'تفصيل مهم', 'موضوع قريب'];
+  }
+
+  if (/\b(off-topic|secondary|information)\b/i.test(localeHint)) {
+    return ['related detail', 'secondary idea', 'connected topic'];
+  }
+
+  return ['idée secondaire', 'information complémentaire', 'sujet connexe'];
 };
 
 const buildFallbackOptions = (
@@ -278,11 +292,7 @@ const buildFallbackOptions = (
   const distractors = qualityCandidates.slice(0, 2);
 
   const localeHint = `${answer || ''} ${fallbacks.join(' ')}`;
-  const backupLabels = /[\u0600-\u06FF]/u.test(localeHint)
-    ? ['معلومة مرتبطة بالنص', 'تفصيل مهم', 'موضوع قريب']
-    : /\b(off-topic|secondary|information)\b/i.test(localeHint)
-      ? ['related detail', 'secondary idea', 'connected topic']
-      : ['idée secondaire', 'information complémentaire', 'sujet connexe'];
+  const backupLabels = getBackupLabelsByLocale(localeHint);
 
   while (distractors.length < 2) {
     distractors.push(backupLabels[distractors.length] || backupLabels[backupLabels.length - 1]);
@@ -389,7 +399,7 @@ const generateQuestionsFromText = (text) => {
 const isWeakOptionSet = (options = []) =>
   !Array.isArray(options) ||
   options.length < 3 ||
-  options.filter((option) => countWords(String(option || '')) < 2).length >= 2;
+  options.filter((option) => countWords(String(option || '')) < MIN_QUALITY_WORD_COUNT).length > MAX_SINGLE_WORD_OPTIONS;
 
 const isLowQualityGeneratedQuiz = (questions = []) =>
   !Array.isArray(questions) ||
@@ -398,7 +408,8 @@ const isLowQualityGeneratedQuiz = (questions = []) =>
     const answers = [question?.correctAnswerFr, question?.correctAnswerDarija, question?.correctAnswer]
       .filter(Boolean)
       .map((value) => String(value));
-    const weakAnswer = answers.length > 0 && answers.every((answer) => countWords(answer) < 2);
+    const weakAnswer =
+      answers.length > 0 && answers.every((answer) => countWords(answer) < MIN_QUALITY_WORD_COUNT);
     const weakOptions = [question?.optionsFr, question?.optionsDarija, question?.options].some(isWeakOptionSet);
     return weakAnswer || weakOptions;
   });
@@ -1706,11 +1717,15 @@ export const apiClient = {
 
         if (needsRefresh) {
           const refreshed = generateQuestionsFromText(normalizeTextRecord(record));
-          await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
-            method: 'PATCH',
-            body: { generated_questions: refreshed },
-            prefer: 'return=representation',
-          });
+          try {
+            await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
+              method: 'PATCH',
+              body: { generated_questions: refreshed },
+              prefer: 'return=representation',
+            });
+          } catch (error) {
+            console.warn('Unable to persist refreshed quiz questions to Supabase:', error);
+          }
           return refreshed.length ? refreshed : buildDefaultQuiz();
         }
 
