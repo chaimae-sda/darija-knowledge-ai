@@ -73,22 +73,6 @@ export const AuthProvider = ({ children }) => {
     throw new Error('Invalid login response');
   };
 
-  const loginDemo = async () => {
-    const result = await apiClient.loginDemo();
-    if (result.error) {
-      throw new Error(result.error);
-    }
-
-    if (result.user && result.token) {
-      setToken(result.token);
-      setUser(result.user);
-      apiClient.setToken(result.token);
-      return true;
-    }
-
-    throw new Error('Invalid demo login response');
-  };
-
   const register = async (username, email, password) => {
     const result = await apiClient.register(username, email, password);
     if (result.error) {
@@ -112,7 +96,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, token, loading, login, loginDemo, register, logout }}>
+    <AuthContext.Provider value={{ user, setUser, token, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,3 +1,6 @@
+import { aiService } from './aiService';
+import { ocrService } from './ocrService';
+
 const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL || 'https://pagfnzzrzwwbwyljlovo.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY =
@@ -10,8 +13,6 @@ const STORAGE_KEYS = {
   user: 'darija.session.user',
   accessToken: 'darija.session.access_token',
   refreshToken: 'darija.session.refresh_token',
-  users: 'darija.mock.users',
-  texts: 'darija.mock.texts',
 };
 
 const STAGE_DEFS = [
@@ -350,19 +351,18 @@ const buildFallbackOptions = (
   return shuffle([answer, distractors[0], distractors[1]]);
 };
 
+const generateBestQuestionsForText = async (text) => {
+  // Try AI-generated questions first (most relevant and accurate)
+  const aiQuestions = await generateQuestionsWithAI(text);
+  if (Array.isArray(aiQuestions) && aiQuestions.length > 0 && !isLowQualityGeneratedQuiz(aiQuestions)) {
+    return aiQuestions;
+  }
+
+  // Fall back to keyword-based generation if AI unavailable or fails
+  return generateQuestionsFromText(text);
+};
+
 const generateQuestionsFromText = (text) => {
-  const generateBestQuestionsForText = async (text) => {
-    // Try AI-generated questions first (most relevant and accurate)
-    const aiQuestions = await generateQuestionsWithAI(text);
-    if (Array.isArray(aiQuestions) && aiQuestions.length > 0 && !isLowQualityGeneratedQuiz(aiQuestions)) {
-      return aiQuestions;
-    }
-
-    // Fall back to keyword-based generation if AI unavailable or fails
-    return generateQuestionsFromText(text);
-  };
-
-  const generateQuestionsFromText = (text) => {
   const originalText = text?.originalText?.trim() || text?.original_text?.trim() || '';
   const darijaText = text?.darijaText?.trim() || text?.darija_text?.trim() || '';
   const title = text?.title?.trim() || 'هاد الوثيقة';
@@ -607,7 +607,8 @@ const generateQuestionsWithAI = async (text) => {
   const title = text?.title?.trim() || 'document';
   const combinedText = `${originalText}\n${darijaText}`.trim().slice(0, MAX_AI_SOURCE_LENGTH);
 
-  if (!combinedText || countWords(combinedText) < 40) {
+  // Let shorter uploads still try AI; the fallback should only be a last resort.
+  if (!combinedText || countWords(combinedText) < 12) {
     return null;
   }
 
@@ -662,7 +663,6 @@ Rules:
     });
 
     if (!response.ok) {
-        const prompt = `You are an expert language comprehension assessment specialist. Create exactly ${QUIZ_TARGET_COUNT} high-quality comprehension-based multiple-choice quiz questions from the document "${title}".
       return null;
     }
 
@@ -689,6 +689,16 @@ Rules:
     return normalized;
   } catch {
     return null;
+  }
+};
+
+const getOptionSimilarity = (a = '', b = '') => {
+  const aTokens = new Set(
+    normalizeToken(a)
+      .split(/\s+/)
+      .filter((token) => token.length > 2),
+  );
+  const bTokens = new Set(
     normalizeToken(b)
       .split(/\s+/)
       .filter((token) => token.length > 2),
@@ -773,10 +783,6 @@ const ensureHighQualityQuestions = (text, existingQuestions = []) => {
 };
 
 const generateSmartQuestionsForText = async (text, existingQuestions = []) => {
-  if (!needsQuestionRefresh(existingQuestions)) {
-    return existingQuestions;
-  }
-
   const aiQuestions = await generateQuestionsWithAI(text);
   if (Array.isArray(aiQuestions) && aiQuestions.length > 0 && !isLowQualityGeneratedQuiz(aiQuestions)) {
     return aiQuestions;
@@ -920,233 +926,6 @@ const applyAchievements = (user, texts = []) => {
   }
 
   return normalizeUser(nextUser);
-};
-
-const createDemoData = () => {
-  const now = new Date().toISOString();
-  const text1 = {
-    _id: 'text_1',
-    ownerId: 'test_user_id',
-    title: "L'intelligence artificielle transforme notre facon d'apprendre",
-    originalText:
-      "L'intelligence artificielle transforme notre facon d'apprendre et de comprendre le monde. Elle permet d'automatiser des taches et d'analyser des donnees pour prendre de meilleures decisions.",
-    darijaText:
-      'الذكاء الاصطناعي كيغير طريقة ديالنا فالتعلم وكيفهمنا العالم. كيعاون على الاتمتة وتحليل البيانات باش ناخدو قرارات احسن.',
-    isFavorite: true,
-    readCount: 12,
-    source: 'upload',
-    fileName: 'ia-learning.pdf',
-    mimeType: 'application/pdf',
-    createdAt: now,
-  };
-  const text2 = {
-    _id: 'text_2',
-    ownerId: 'test_user_id',
-    title: 'Histoire du Maroc',
-    originalText: "Le Maroc est un pays situe au nord-ouest de l'Afrique avec une histoire riche et diverse.",
-    darijaText: 'لمغرب بلاد فشمال غرب افريقيا وعندو تاريخ غني ومتنوع بزاف.',
-    isFavorite: false,
-    readCount: 5,
-    source: 'scan',
-    createdAt: now,
-  };
-
-  text1.generatedQuestions = [
-    {
-      _id: 'text_1_q1',
-      questionTextFr: "Selon \"L'intelligence artificielle transforme notre facon d'apprendre\", quel est le plus grand impact de l'IA ?",
-      questionTextEn: 'What does artificial intelligence have the greatest impact on according to this document?',
-      questionTextDarija: 'علاش الذكاء الاصطناعي مهم حسب الموضوع؟',
-      correctAnswerFr: "La façon d'apprendre",
-      correctAnswerEn: 'The way we learn',
-      correctAnswerDarija: 'طريقة التعلم',
-      optionsFr: ["La façon d'apprendre", 'La cuisine', 'Les transports'],
-      optionsEn: ['The way we learn', 'Cooking', 'Transportation'],
-      optionsDarija: ['طريقة التعلم', 'الطبخ', 'السفر'],
-      correctAnswer: 'طريقة التعلم',
-      options: ['طريقة التعلم', 'الطبخ', 'السفر'],
-      xpReward: 20,
-    },
-    {
-      _id: 'text_1_q2',
-      questionTextFr: "Que permet d'analyser l'intelligence artificielle dans ce texte?",
-      questionTextEn: 'What does AI help to analyse according to the text?',
-      questionTextDarija: 'شنو كيحلل الذكاء الاصطناعي؟',
-      correctAnswerFr: 'Des données',
-      correctAnswerEn: 'Data',
-      correctAnswerDarija: 'البيانات',
-      optionsFr: ['Des données', 'Des images', 'De la musique'],
-      optionsEn: ['Data', 'Images', 'Music'],
-      optionsDarija: ['البيانات', 'الصور', 'الموسيقى'],
-      correctAnswer: 'البيانات',
-      options: ['البيانات', 'الصور', 'الموسيقى'],
-      xpReward: 20,
-    },
-    {
-      _id: 'text_1_q3',
-      questionTextFr: "Quel est l'objectif principal mentionné dans ce texte?",
-      questionTextEn: 'What is the main goal mentioned in this text?',
-      questionTextDarija: 'شنو هو الهدف الأساسي؟',
-      correctAnswerFr: 'Prendre de meilleures décisions',
-      correctAnswerEn: 'Make better decisions',
-      correctAnswerDarija: 'قرارات احسن',
-      optionsFr: ['Prendre de meilleures décisions', 'Perdre du temps', 'Créer de la confusion'],
-      optionsEn: ['Make better decisions', 'Waste time', 'Create confusion'],
-      optionsDarija: ['قرارات احسن', 'نضيعو الوقت', 'نخلقو لبلبلة'],
-      correctAnswer: 'قرارات احسن',
-      options: ['قرارات احسن', 'نضيعو الوقت', 'نخلقو لبلبلة'],
-      xpReward: 30,
-    },
-  ];
-  text2.generatedQuestions = [
-    {
-      _id: 'text_2_q1',
-      questionTextFr: 'Où se situe le Maroc géographiquement selon "Histoire du Maroc"?',
-      questionTextEn: 'Where is Morocco located geographically?',
-      questionTextDarija: 'فين كاين لمغرب جغرافيا؟',
-      correctAnswerFr: "Nord-ouest de l'Afrique",
-      correctAnswerEn: 'Northwest Africa',
-      correctAnswerDarija: 'شمال غرب افريقيا',
-      optionsFr: ["Nord-ouest de l'Afrique", "Asie centrale", "Amérique du Sud"],
-      optionsEn: ['Northwest Africa', 'Central Asia', 'South America'],
-      optionsDarija: ['شمال غرب افريقيا', 'وسط آسيا', 'امريكا الجنوبية'],
-      correctAnswer: 'شمال غرب افريقيا',
-      options: ['شمال غرب افريقيا', 'وسط آسيا', 'امريكا الجنوبية'],
-      xpReward: 20,
-    },
-    {
-      _id: 'text_2_q2',
-      questionTextFr: "Comment l'histoire du Maroc est-elle décrite dans ce texte?",
-      questionTextEn: "How is Morocco's history described in this text?",
-      questionTextDarija: 'كيفاش كيوصف النص تاريخ لمغرب؟',
-      correctAnswerFr: 'Riche et diverse',
-      correctAnswerEn: 'Rich and diverse',
-      correctAnswerDarija: 'غني ومتنوع',
-      optionsFr: ['Riche et diverse', 'Courte et simple', 'Inconnue et mystérieuse'],
-      optionsEn: ['Rich and diverse', 'Short and simple', 'Unknown and mysterious'],
-      optionsDarija: ['غني ومتنوع', 'قصير وبسيط', 'مجهول وغامض'],
-      correctAnswer: 'غني ومتنوع',
-      options: ['غني ومتنوع', 'قصير وبسيط', 'مجهول وغامض'],
-      xpReward: 20,
-    },
-    {
-      _id: 'text_2_q3',
-      questionTextFr: 'Sur quel continent se trouve le Maroc ?',
-      questionTextEn: 'On which continent is Morocco located?',
-      questionTextDarija: 'فأي قارة كاين لمغرب؟',
-      correctAnswerFr: "L'Afrique",
-      correctAnswerEn: 'Africa',
-      correctAnswerDarija: 'افريقيا',
-      optionsFr: ["L'Afrique", "L'Europe", "L'Asie"],
-      optionsEn: ['Africa', 'Europe', 'Asia'],
-      optionsDarija: ['افريقيا', 'اوروبا', 'آسيا'],
-      correctAnswer: 'افريقيا',
-      options: ['افريقيا', 'اوروبا', 'آسيا'],
-      xpReward: 30,
-    },
-  ];
-
-  return {
-    users: [
-      {
-        id: 'test_user_id',
-        _id: 'test_user_id',
-        username: 'Chaimae',
-        email: 'test@example.com',
-        password: 'password',
-        avatar: '👧',
-        level: getLevelFromXp(1250),
-        levelName: getLevelName(getLevelFromXp(1250)),
-        xp: 1250,
-        booksRead: 5,
-        badges: [
-          { ...BADGE_CATALOG.first_scan, unlockedAt: now },
-          { ...BADGE_CATALOG.ten_pages, unlockedAt: now },
-          { ...BADGE_CATALOG.quiz_master, unlockedAt: now },
-          { ...BADGE_CATALOG.regular, unlockedAt: now },
-        ],
-        stats: {
-          readingTime: 330,
-          quizzesPassed: 18,
-          bestStreak: 7,
-          pagesRead: 14,
-          importedCount: 4,
-          scannedCount: 1,
-          perfectQuizzes: 5,
-          audioSessions: 2,
-        },
-      },
-    ],
-    texts: [text1, text2],
-  };
-};
-
-const mergeDemoData = (db) => {
-  const defaults = createDemoData();
-  const demoUser = defaults.users[0];
-  const demoTexts = defaults.texts;
-
-  const demoUserIndex = db.users.findIndex((user) => (user.id || user._id) === demoUser.id);
-  if (demoUserIndex === -1) {
-    db.users.unshift(demoUser);
-  } else {
-    db.users[demoUserIndex] = {
-      ...demoUser,
-      ...db.users[demoUserIndex],
-      password: db.users[demoUserIndex].password || demoUser.password,
-      stats: {
-        ...demoUser.stats,
-        ...db.users[demoUserIndex].stats,
-      },
-    };
-  }
-
-  for (const demoText of demoTexts) {
-    const existingIndex = db.texts.findIndex((text) => text._id === demoText._id);
-    if (existingIndex === -1) {
-      db.texts.push(demoText);
-    } else {
-      // Always refresh seeded questions for demo texts so improvements are picked up
-      db.texts[existingIndex] = {
-        ...db.texts[existingIndex],
-        generatedQuestions: demoText.generatedQuestions,
-      };
-    }
-  }
-
-  return db;
-};
-
-const loadMockDb = () => {
-  const defaults = createDemoData();
-  const rawUsers = safeJsonParse(localStorage.getItem(STORAGE_KEYS.users), defaults.users);
-  const rawTexts = safeJsonParse(localStorage.getItem(STORAGE_KEYS.texts), defaults.texts);
-  const mergedDb = mergeDemoData({ users: rawUsers, texts: rawTexts });
-
-  const users = mergedDb.users.map((user) => ({
-    ...user,
-    id: user.id || user._id,
-    _id: user._id || user.id,
-    password: user.password || '',
-    level: user.level || getLevelFromXp(user.xp || 0),
-    levelName: user.levelName || getLevelName(user.level || getLevelFromXp(user.xp || 0)),
-    stats: normalizeStats(user.stats),
-  }));
-  const texts = mergedDb.texts.map((text) => ({
-    ...text,
-    ownerId: text.ownerId || 'test_user_id',
-    generatedQuestions: ensureHighQualityQuestions(text, text.generatedQuestions),
-  }));
-
-  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
-  localStorage.setItem(STORAGE_KEYS.texts, JSON.stringify(texts));
-
-  return { users, texts };
-};
-
-const saveMockDb = (db) => {
-  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(db.users));
-  localStorage.setItem(STORAGE_KEYS.texts, JSON.stringify(db.texts));
 };
 
 const getStoredSessionUser = () => safeJsonParse(sessionStorage.getItem(STORAGE_KEYS.user), null);
@@ -1626,12 +1405,9 @@ const mockHandlers = {
     }
 
     const refreshedQuestions = await generateSmartQuestionsForText(text, text.generatedQuestions);
-    const shouldPersist = needsQuestionRefresh(text.generatedQuestions);
 
-    if (shouldPersist) {
-      text.generatedQuestions = refreshedQuestions;
-      saveMockDb(db);
-    }
+    text.generatedQuestions = refreshedQuestions;
+    saveMockDb(db);
 
     return refreshedQuestions.length > 0 ? refreshedQuestions : buildDefaultQuiz();
   },
@@ -1849,316 +1625,242 @@ export const apiClient = {
 
   getStoredUser: () => getStoredSessionUser(),
 
-  restoreSession: async () =>
-    withFallback(
-      restoreSupabaseSession,
-      async () => ({ user: getStoredSessionUser(), token: getAccessToken() }),
-    ),
+  restoreSession: restoreSupabaseSession,
 
-  register: async (username, email, password) =>
-    withFallback(
-      () => registerWithSupabase(username, email, password),
-      () => mockHandlers.register({ username, email, password }),
-    ),
+  register: async (username, email, password) => registerWithSupabase(username, email, password),
 
-  login: async (email, password) =>
-    withFallback(
-      () => loginWithSupabase(email, password),
-      () => mockHandlers.login({ email, password }),
-    ),
-
-  loginDemo: async () => mockHandlers.login({ email: 'test@example.com', password: 'password' }),
+  login: async (email, password) => loginWithSupabase(email, password),
 
   logout: () => {
     clearSession();
   },
 
-  getProfile: async () =>
-    withFallback(
-      async () => ({ user: await getSupabaseProfile() }),
-      mockHandlers.getProfile,
-    ),
+  getProfile: async () => ({ user: await getSupabaseProfile() }),
 
-  updateProfile: async (updates) =>
-    withFallback(
-      () => upsertSupabaseProfile(updates),
-      () => mockHandlers.updateProfile(updates),
-    ),
+  updateProfile: async (updates) => upsertSupabaseProfile(updates),
 
-  addXP: async (xpAmount, metadata = {}) =>
-    withFallback(
-      async () => {
-        const user = await getSupabaseProfile();
-        const texts = await getSupabaseTexts();
-        const nextXp = (user.xp || 0) + xpAmount;
+  addXP: async (xpAmount, metadata = {}) => {
+    const user = await getSupabaseProfile();
+    const texts = await getSupabaseTexts();
+    const nextXp = (user.xp || 0) + xpAmount;
 
-        const today = new Date().toDateString();
-        const lastActiveDate = user.stats?.lastActiveDate;
-        let currentStreak = user.stats?.currentStreak || 0;
-        if (!lastActiveDate) {
-          currentStreak = 1;
-        } else if (lastActiveDate === today) {
-          currentStreak = Math.max(currentStreak, 1);
-        } else {
-          const prevDay = new Date();
-          prevDay.setDate(prevDay.getDate() - 1);
-          const prevDayString = prevDay.toDateString();
-          currentStreak = lastActiveDate === prevDayString ? currentStreak + 1 : 1;
-        }
-        const bestStreak = Math.max(user.stats?.bestStreak || 0, currentStreak);
+    const today = new Date().toDateString();
+    const lastActiveDate = user.stats?.lastActiveDate;
+    let currentStreak = user.stats?.currentStreak || 0;
+    if (!lastActiveDate) {
+      currentStreak = 1;
+    } else if (lastActiveDate === today) {
+      currentStreak = Math.max(currentStreak, 1);
+    } else {
+      const prevDay = new Date();
+      prevDay.setDate(prevDay.getDate() - 1);
+      const prevDayString = prevDay.toDateString();
+      currentStreak = lastActiveDate === prevDayString ? currentStreak + 1 : 1;
+    }
+    const bestStreak = Math.max(user.stats?.bestStreak || 0, currentStreak);
 
-        const completedTextIds = [...(user.stats?.completedTextIds || [])];
-        if (metadata.quizCompleted && metadata.textId && !completedTextIds.includes(metadata.textId)) {
-          completedTextIds.push(metadata.textId);
-        }
+    const completedTextIds = [...(user.stats?.completedTextIds || [])];
+    if (metadata.quizCompleted && metadata.textId && !completedTextIds.includes(metadata.textId)) {
+      completedTextIds.push(metadata.textId);
+    }
 
-        const updatedUser = applyAchievements(
-          {
-            ...user,
-            xp: nextXp,
-            level: getLevelFromXp(nextXp),
-            levelName: getLevelName(getLevelFromXp(nextXp)),
-            stats: {
-              ...(user.stats || {}),
-              quizzesPassed: (user.stats?.quizzesPassed || 0) + (metadata.quizCompleted ? 1 : 0),
-              bestStreak,
-              currentStreak,
-              lastActiveDate: today,
-              perfectQuizzes:
-                (user.stats?.perfectQuizzes || 0) +
-                (metadata.quizCompleted && metadata.totalQuestions > 0 && metadata.correctAnswers === metadata.totalQuestions ? 1 : 0),
-              completedTextIds,
-            },
-          },
-          texts,
-        );
-
-        await upsertSupabaseProfile(updatedUser);
-
-        return {
-          xp: updatedUser.xp,
-          level: updatedUser.level,
-          levelName: updatedUser.levelName,
-          message: 'XP added successfully',
-        };
+    const updatedUser = applyAchievements(
+      {
+        ...user,
+        xp: nextXp,
+        level: getLevelFromXp(nextXp),
+        levelName: getLevelName(getLevelFromXp(nextXp)),
+        stats: {
+          ...(user.stats || {}),
+          quizzesPassed: (user.stats?.quizzesPassed || 0) + (metadata.quizCompleted ? 1 : 0),
+          bestStreak,
+          currentStreak,
+          lastActiveDate: today,
+          perfectQuizzes:
+            (user.stats?.perfectQuizzes || 0) +
+            (metadata.quizCompleted && metadata.totalQuestions > 0 && metadata.correctAnswers === metadata.totalQuestions ? 1 : 0),
+          completedTextIds,
+        },
       },
-      () => mockHandlers.addXP(xpAmount, metadata),
-    ),
+      texts,
+    );
 
-  unlockBadge: async () => ({ message: 'Badge unlocked' }),
+    await upsertSupabaseProfile(updatedUser);
 
-  saveText: async (title, originalText, darijaText, language = 'fr', source = 'upload', fileName = '', mimeType = '') =>
-    withFallback(
-      async () => {
-        const user = await getSupabaseProfile();
-        const payload = {
-          owner_id: user.id,
-          title,
-          original_text: originalText,
-          darija_text: darijaText,
-          language,
-          source,
-          file_name: fileName,
-          mime_type: mimeType,
-          generated_questions: await generateBestQuestionsForText({ title, originalText, darijaText }),
-          read_count: 0,
-          is_favorite: false,
-        };
+    return {
+      xp: updatedUser.xp,
+      level: updatedUser.level,
+      levelName: updatedUser.levelName,
+      message: 'XP added successfully',
+    };
+  },
 
-        const rows = await supabaseRestRequest('/texts?select=*', {
-          method: 'POST',
-          body: payload,
-          prefer: 'return=representation',
-        });
+  saveText: async (title, originalText, darijaText, language = 'fr', source = 'upload', fileName = '', mimeType = '') => {
+    const user = await getSupabaseProfile();
+    const payload = {
+      owner_id: user.id,
+      title,
+      original_text: originalText,
+      darija_text: darijaText,
+      language,
+      source,
+      file_name: fileName,
+      mime_type: mimeType,
+      generated_questions: await generateBestQuestionsForText({ title, originalText, darijaText }),
+      read_count: 0,
+      is_favorite: false,
+    };
 
-        const texts = [...(await getSupabaseTexts()), normalizeTextRecord(rows?.[0])];
-        const updatedUser = applyAchievements(
-          {
-            ...user,
-            xp: (user.xp || 0) + (source === 'scan' ? XP_RULES.scanDocument : XP_RULES.uploadDocument),
-            level: getLevelFromXp((user.xp || 0) + (source === 'scan' ? XP_RULES.scanDocument : XP_RULES.uploadDocument)),
-            levelName: getLevelName(getLevelFromXp((user.xp || 0) + (source === 'scan' ? XP_RULES.scanDocument : XP_RULES.uploadDocument))),
-            booksRead: (user.booksRead || 0) + 1,
-            stats: {
-              ...(user.stats || {}),
-              bestStreak: Math.max(user.stats?.bestStreak || 0, 1),
-              importedCount: (user.stats?.importedCount || 0) + (source === 'upload' ? 1 : 0),
-              scannedCount: (user.stats?.scannedCount || 0) + (source === 'scan' ? 1 : 0),
-            },
-          },
-          texts,
-        );
+    const rows = await supabaseRestRequest('/texts?select=*', {
+      method: 'POST',
+      body: payload,
+      prefer: 'return=representation',
+    });
 
-        await upsertSupabaseProfile(updatedUser);
-
-        return {
-          message: 'Text saved successfully',
-          text: normalizeTextRecord(rows?.[0]),
-          questionsGenerated: payload.generated_questions.length,
-        };
+    const texts = [...(await getSupabaseTexts()), normalizeTextRecord(rows?.[0])];
+    const updatedUser = applyAchievements(
+      {
+        ...user,
+        xp: (user.xp || 0) + (source === 'scan' ? XP_RULES.scanDocument : XP_RULES.uploadDocument),
+        level: getLevelFromXp((user.xp || 0) + (source === 'scan' ? XP_RULES.scanDocument : XP_RULES.uploadDocument)),
+        levelName: getLevelName(getLevelFromXp((user.xp || 0) + (source === 'scan' ? XP_RULES.scanDocument : XP_RULES.uploadDocument))),
+        booksRead: (user.booksRead || 0) + 1,
+        stats: {
+          ...(user.stats || {}),
+          bestStreak: Math.max(user.stats?.bestStreak || 0, 1),
+          importedCount: (user.stats?.importedCount || 0) + (source === 'upload' ? 1 : 0),
+          scannedCount: (user.stats?.scannedCount || 0) + (source === 'scan' ? 1 : 0),
+        },
       },
-      () => mockHandlers.saveText({ title, originalText, darijaText, language, source, fileName, mimeType }),
-    ),
+      texts,
+    );
 
-  getTexts: async () =>
-    withFallback(
-      getSupabaseTexts,
-      mockHandlers.getTexts,
-    ),
+    await upsertSupabaseProfile(updatedUser);
 
-  getText: async (textId) =>
-    withFallback(
-      async () => {
-        const rows = await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`);
-        const rawText = rows?.[0];
-        if (!rawText) {
-          return { error: 'Text not found' };
-        }
+    return {
+      message: 'Text saved successfully',
+      text: normalizeTextRecord(rows?.[0]),
+      questionsGenerated: payload.generated_questions.length,
+    };
+  },
 
-        const normalizedText = normalizeTextRecord(rawText);
-        const previousReadCount = normalizedText.readCount || 0;
-        const nextReadCount = previousReadCount + 1;
+  getTexts: async () => getSupabaseTexts(),
 
-        await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
-          method: 'PATCH',
-          body: { read_count: nextReadCount },
-          prefer: 'return=representation',
-        });
+  getText: async (textId) => {
+    const rows = await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`);
+    const rawText = rows?.[0];
+    if (!rawText) {
+      return { error: 'Text not found' };
+    }
 
-        const user = await getSupabaseProfile();
-        const texts = await getSupabaseTexts();
-        const updatedUser = applyAchievements(
-          {
-            ...user,
-            xp: (user.xp || 0) + (previousReadCount === 0 ? XP_RULES.firstRead : XP_RULES.repeatRead),
-            level: getLevelFromXp((user.xp || 0) + (previousReadCount === 0 ? XP_RULES.firstRead : XP_RULES.repeatRead)),
-            levelName: getLevelName(getLevelFromXp((user.xp || 0) + (previousReadCount === 0 ? XP_RULES.firstRead : XP_RULES.repeatRead))),
-            stats: {
-              ...(user.stats || {}),
-              readingTime: (user.stats?.readingTime || 0) + 4,
-              pagesRead:
-                (user.stats?.pagesRead || 0) +
-                estimatePageCount(normalizedText.originalText || normalizedText.darijaText || ''),
-            },
-          },
-          texts,
-        );
+    const normalizedText = normalizeTextRecord(rawText);
+    const previousReadCount = normalizedText.readCount || 0;
+    const nextReadCount = previousReadCount + 1;
 
-        await upsertSupabaseProfile(updatedUser);
-        return { ...normalizedText, readCount: nextReadCount };
+    await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
+      method: 'PATCH',
+      body: { read_count: nextReadCount },
+      prefer: 'return=representation',
+    });
+
+    const user = await getSupabaseProfile();
+    const texts = await getSupabaseTexts();
+    const updatedUser = applyAchievements(
+      {
+        ...user,
+        xp: (user.xp || 0) + (previousReadCount === 0 ? XP_RULES.firstRead : XP_RULES.repeatRead),
+        level: getLevelFromXp((user.xp || 0) + (previousReadCount === 0 ? XP_RULES.firstRead : XP_RULES.repeatRead)),
+        levelName: getLevelName(getLevelFromXp((user.xp || 0) + (previousReadCount === 0 ? XP_RULES.firstRead : XP_RULES.repeatRead))),
+        stats: {
+          ...(user.stats || {}),
+          readingTime: (user.stats?.readingTime || 0) + 4,
+          pagesRead:
+            (user.stats?.pagesRead || 0) +
+            estimatePageCount(normalizedText.originalText || normalizedText.darijaText || ''),
+        },
       },
-      () => mockHandlers.getText(textId),
-    ),
+      texts,
+    );
 
-  toggleFavorite: async (textId) =>
-    withFallback(
-      async () => {
-        const rows = await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`);
-        const record = rows?.[0];
-        if (!record) {
-          return { error: 'Text not found' };
-        }
+    await upsertSupabaseProfile(updatedUser);
+    return { ...normalizedText, readCount: nextReadCount };
+  },
 
-        const nextValue = !record.is_favorite;
-        await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
-          method: 'PATCH',
-          body: { is_favorite: nextValue },
-          prefer: 'return=representation',
-        });
+  toggleFavorite: async (textId) => {
+    const rows = await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`);
+    const record = rows?.[0];
+    if (!record) {
+      return { error: 'Text not found' };
+    }
 
-        return { isFavorite: nextValue };
+    const nextValue = !record.is_favorite;
+    await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
+      method: 'PATCH',
+      body: { is_favorite: nextValue },
+      prefer: 'return=representation',
+    });
+
+    return { isFavorite: nextValue };
+  },
+
+  deleteText: async (textId) => {
+    await supabaseRestRequest(`/texts?id=eq.${textId}`, {
+      method: 'DELETE',
+      prefer: 'return=minimal',
+    });
+    return { success: true };
+  },
+
+  translateText: async (text) => ({ translated: await aiService.translate(text) }),
+
+  performOCR: async (base64Image, mimeType = 'image/jpeg') => ocrService.scanImage(base64Image, mimeType),
+
+  getQuizQuestions: async (textId) => {
+    const rows = await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`);
+    const record = rows?.[0];
+    if (!record) {
+      return { error: 'Text not found' };
+    }
+
+    const existingQuestions = Array.isArray(record.generated_questions) ? record.generated_questions : [];
+    const refreshed = await generateSmartQuestionsForText(normalizeTextRecord(record), existingQuestions);
+
+    try {
+      await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
+        method: 'PATCH',
+        body: { generated_questions: refreshed },
+        prefer: 'return=representation',
+      });
+    } catch (error) {
+      console.warn('Unable to persist refreshed quiz questions to Supabase:', error);
+    }
+
+    return refreshed.length ? refreshed : { error: 'No quiz questions available' };
+  },
+
+  getJourneyProgress: async () => buildJourney(await getSupabaseProfile()),
+
+  completeLevel: async (levelId) => apiClient.addXP(200, { levelId }),
+
+  trackAudioSession: async () => {
+    const user = await getSupabaseProfile();
+    const texts = await getSupabaseTexts();
+    const nextXp = (user.xp || 0) + XP_RULES.audioSession;
+    const updatedUser = applyAchievements(
+      {
+        ...user,
+        xp: nextXp,
+        level: getLevelFromXp(nextXp),
+        levelName: getLevelName(getLevelFromXp(nextXp)),
+        stats: {
+          ...(user.stats || {}),
+          audioSessions: (user.stats?.audioSessions || 0) + 1,
+        },
       },
-      () => mockHandlers.toggleFavorite(textId),
-    ),
+      texts,
+    );
 
-  deleteText: async (textId) =>
-    withFallback(
-      async () => {
-        await supabaseRestRequest(`/texts?id=eq.${textId}`, {
-          method: 'DELETE',
-          prefer: 'return=minimal',
-        });
-        return { success: true };
-      },
-      () => mockHandlers.deleteText(textId),
-    ),
-
-  translateText: async (text) => mockHandlers.translateText({ text }),
-
-  performOCR: async (base64Image, mimeType = 'image/jpeg') =>
-    mockHandlers.performOCR(base64Image, mimeType),
-
-  getQuizQuestions: async (textId) =>
-    withFallback(
-      async () => {
-        const rows = await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`);
-        const record = rows?.[0];
-        if (!record) {
-          return buildDefaultQuiz();
-        }
-
-        const existingQuestions = Array.isArray(record.generated_questions) ? record.generated_questions : [];
-        const needsRefresh = needsQuestionRefresh(existingQuestions);
-
-        if (needsRefresh) {
-          const refreshed = await generateSmartQuestionsForText(normalizeTextRecord(record), existingQuestions);
-          try {
-            await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
-              method: 'PATCH',
-              body: { generated_questions: refreshed },
-              prefer: 'return=representation',
-            });
-          } catch (error) {
-            console.warn('Unable to persist refreshed quiz questions to Supabase:', error);
-          }
-          return refreshed.length ? refreshed : buildDefaultQuiz();
-        }
-
-        const text = normalizeTextRecord(record);
-        return text.generatedQuestions?.length ? text.generatedQuestions : buildDefaultQuiz();
-      },
-      () => mockHandlers.getQuizQuestions(textId),
-    ),
-
-  getRandomQuiz: async () => mockHandlers.getQuizQuestions(),
-
-  submitAnswer: async (questionId, userAnswer) => mockHandlers.submitAnswer(questionId, userAnswer),
-
-  getJourneyProgress: async () =>
-    withFallback(
-      async () => buildJourney(await getSupabaseProfile()),
-      mockHandlers.getJourneyProgress,
-    ),
-
-  completeLevel: async (levelId) =>
-    withFallback(
-      async () => apiClient.addXP(200, { levelId }),
-      () => mockHandlers.completeLevel(levelId),
-    ),
-
-  trackAudioSession: async () =>
-    withFallback(
-      async () => {
-        const user = await getSupabaseProfile();
-        const texts = await getSupabaseTexts();
-        const nextXp = (user.xp || 0) + XP_RULES.audioSession;
-        const updatedUser = applyAchievements(
-          {
-            ...user,
-            xp: nextXp,
-            level: getLevelFromXp(nextXp),
-            levelName: getLevelName(getLevelFromXp(nextXp)),
-            stats: {
-              ...(user.stats || {}),
-              audioSessions: (user.stats?.audioSessions || 0) + 1,
-            },
-          },
-          texts,
-        );
-
-        await upsertSupabaseProfile(updatedUser);
-        return { success: true, xp: updatedUser.xp, level: updatedUser.level };
-      },
-      mockHandlers.trackAudioSession,
-    ),
+    await upsertSupabaseProfile(updatedUser);
+    return { success: true, xp: updatedUser.xp, level: updatedUser.level };
+  },
 };
