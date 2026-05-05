@@ -351,6 +351,18 @@ const buildFallbackOptions = (
 };
 
 const generateQuestionsFromText = (text) => {
+  const generateBestQuestionsForText = async (text) => {
+    // Try AI-generated questions first (most relevant and accurate)
+    const aiQuestions = await generateQuestionsWithAI(text);
+    if (Array.isArray(aiQuestions) && aiQuestions.length > 0 && !isLowQualityGeneratedQuiz(aiQuestions)) {
+      return aiQuestions;
+    }
+
+    // Fall back to keyword-based generation if AI unavailable or fails
+    return generateQuestionsFromText(text);
+  };
+
+  const generateQuestionsFromText = (text) => {
   const originalText = text?.originalText?.trim() || text?.original_text?.trim() || '';
   const darijaText = text?.darijaText?.trim() || text?.darija_text?.trim() || '';
   const title = text?.title?.trim() || 'هاد الوثيقة';
@@ -650,6 +662,7 @@ Rules:
     });
 
     if (!response.ok) {
+        const prompt = `You are an expert language comprehension assessment specialist. Create exactly ${QUIZ_TARGET_COUNT} high-quality comprehension-based multiple-choice quiz questions from the document "${title}".
       return null;
     }
 
@@ -676,16 +689,6 @@ Rules:
     return normalized;
   } catch {
     return null;
-  }
-};
-
-const getOptionSimilarity = (a = '', b = '') => {
-  const aTokens = new Set(
-    normalizeToken(a)
-      .split(/\s+/)
-      .filter((token) => token.length > 2),
-  );
-  const bTokens = new Set(
     normalizeToken(b)
       .split(/\s+/)
       .filter((token) => token.length > 2),
@@ -1553,7 +1556,7 @@ const mockHandlers = {
       source,
       fileName,
       mimeType,
-      generatedQuestions: generateQuestionsFromText({ title, originalText, darijaText }),
+      generatedQuestions: await generateBestQuestionsForText({ title, originalText, darijaText }),
       readCount: 0,
       isFavorite: false,
       createdAt: new Date().toISOString(),
@@ -1957,7 +1960,7 @@ export const apiClient = {
           source,
           file_name: fileName,
           mime_type: mimeType,
-          generated_questions: generateQuestionsFromText({ title, originalText, darijaText }),
+          generated_questions: await generateBestQuestionsForText({ title, originalText, darijaText }),
           read_count: 0,
           is_favorite: false,
         };
