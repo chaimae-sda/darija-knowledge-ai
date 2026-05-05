@@ -81,7 +81,11 @@ const Scan = ({ onTextScanned, onBack }) => {
         onTextScanned(result);
       }
     } catch (error) {
-      alert(t('scan.scanError', { message: error.message }));
+      let errorMsg = error.message;
+      if (error.message.includes('429') || error.message === 'MISTRAL_RATE_LIMIT') {
+        errorMsg = 'Scan service is temporarily busy. Please try again in a moment.';
+      }
+      alert(t('scan.scanError', { message: errorMsg }));
     } finally {
       setLoading(false);
       setStatusMessage(cameraActive ? t('scan.frameHint') : `${t('common.unavailableCamera')}.`);
@@ -104,7 +108,11 @@ const Scan = ({ onTextScanned, onBack }) => {
         onTextScanned(savedText);
       }
     } catch (error) {
-      alert(t('scan.scanError', { message: error.message }));
+      let errorMsg = error.message;
+      if (error.message.includes('429') || error.message === 'MISTRAL_RATE_LIMIT') {
+        errorMsg = 'Scan service is temporarily busy. Please try again in a moment.';
+      }
+      alert(t('scan.scanError', { message: errorMsg }));
     } finally {
       setLoading(false);
       setStatusMessage(cameraActive ? t('scan.frameHint') : `${t('common.unavailableCamera')}.`);

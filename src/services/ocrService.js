@@ -86,6 +86,11 @@ const recognizeImageWithMistral = async (base64Image, mimeType = 'image/jpeg') =
 
   if (!response.ok) {
     const err = await response.text();
+    // Check if it's a rate limit error
+    if (response.status === 429) {
+      console.warn('[ocrService] Mistral API rate limit exceeded, trying backend fallback...');
+      throw new Error('MISTRAL_RATE_LIMIT');
+    }
     throw new Error(`Mistral API error ${response.status}: ${err}`);
   }
 
@@ -95,12 +100,41 @@ const recognizeImageWithMistral = async (base64Image, mimeType = 'image/jpeg') =
 
 const recognizeImage = async (imageSource, mimeType = 'image/jpeg') => {
   // imageSource may be a data-URL (from PDF canvas rendering) or a plain base64 string
+  let base64;
   if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
     const [header, b64] = imageSource.split(',');
-    return recognizeImageWithMistral(b64, header.split(':')[1].split(';')[0]);
+    base64 = b64;
+    mimeType = header.split(':')[1].split(';')[0];
+  } else {
+    base64 = imageSource;
   }
 
-  return recognizeImageWithMistral(imageSource, mimeType);
+  // Try Mistral first
+  try {
+    return await recognizeImageWithMistral(base64, mimeType);
+  } catch (mistralError) {
+    // If Mistral rate limit or fails, try backend fallback
+    if (mistralError.message === 'MISTRAL_RATE_LIMIT' || mistralError.message.includes('429')) {
+      console.log('[ocrService] Using backend OCR fallback...');
+      try {
+        const response = await fetch('/api/texts/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64, mimeType }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return normalizeText(data.originalText || '');
+        }
+      } catch (backendError) {
+        console.warn('[ocrService] Backend fallback also failed:', backendError);
+      }
+    }
+
+    // If both fail, throw the original error
+    throw mistralError;
+  }
 };
 
 const translateToDarija = async (text) => {

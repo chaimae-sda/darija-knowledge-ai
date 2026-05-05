@@ -110,8 +110,8 @@ router.post('/translate', authenticateToken, async (req, res) => {
   }
 });
 
-// OCR and Smart Translation
-router.post('/ocr', authenticateToken, async (req, res) => {
+// OCR and Smart Translation (no auth required - OCR is preliminary step before saving)
+router.post('/ocr', async (req, res) => {
   try {
     const { image, mimeType = 'image/jpeg' } = req.body;
 
