@@ -401,9 +401,9 @@ const generateQuestionsFromText = (text) => {
   return [
     {
       _id: `q_${text?._id || 'doc'}_1`,
-      questionTextFr: `De quoi parle principalement ce document ?`,
-      questionTextEn: `What is this document mainly about?`,
-      questionTextDarija: `هاد الوثيقة اللي سفتّي كتدور على شنو بالأساس؟`,
+      questionTextFr: `De quoi parle principalement "${title}" ?`,
+      questionTextEn: `What is "${title}" mainly about?`,
+      questionTextDarija: `ما هو الموضوع الرئيسي في "${title}"؟`,
       correctAnswerFr: firstFrAnswer,
       correctAnswerEn: firstFrAnswer,
       correctAnswerDarija: firstDarijaAnswer,
@@ -449,9 +449,9 @@ const generateQuestionsFromText = (text) => {
     },
     {
       _id: `q_${text?._id || 'doc'}_4`,
-      questionTextFr: `Pourquoi ce document est-il utile à lire ?`,
-      questionTextEn: `Why is this document useful to read?`,
-      questionTextDarija: `علاش هاد الوثيقة مفيدة للقراية؟`,
+      questionTextFr: `Pourquoi "${title}" est-il/elle utile à lire ?`,
+      questionTextEn: `Why is "${title}" useful to read?`,
+      questionTextDarija: `علاش قراية "${title}" مفيدة؟`,
       correctAnswerFr: fourthFrAnswer,
       correctAnswerEn: fourthFrAnswer,
       correctAnswerDarija: fourthDarijaAnswer,
@@ -465,9 +465,9 @@ const generateQuestionsFromText = (text) => {
     },
     {
       _id: `q_${text?._id || 'doc'}_5`,
-      questionTextFr: `Quelle affirmation correspond le mieux au document ?`,
-      questionTextEn: `Which statement best matches the document?`,
-      questionTextDarija: `شنو الجملة اللي كتناسب هاد الوثيقة أكثر؟`,
+      questionTextFr: `Quelle affirmation correspond le mieux à "${title}" ?`,
+      questionTextEn: `Which statement best matches "${title}"?`,
+      questionTextDarija: `شنو الجملة اللي كتناسب "${title}" أكثر؟`,
       correctAnswerFr: firstFrAnswer,
       correctAnswerEn: firstFrAnswer,
       correctAnswerDarija: firstDarijaAnswer,
@@ -599,9 +599,9 @@ const generateQuestionsWithAI = async (text) => {
     return null;
   }
 
-  const prompt = `Create exactly ${QUIZ_TARGET_COUNT} high-quality multiple-choice quiz questions based on this uploaded text.
+  const prompt = `Create exactly ${QUIZ_TARGET_COUNT} high-quality multiple-choice quiz questions based on "${title}".
 
-Title: ${title}
+DocumentTitle: ${title}
 Text:
 ${combinedText}
 
@@ -618,13 +618,21 @@ Each item must follow this schema:
   "xpReward": 30
 }
 
+IMPORTANT INSTRUCTIONS:
+- NEVER use phrases like "ce texte", "ce document", "this document", or "this text"
+- ALWAYS reference the document title "${title}" when asking questions
+- Example: "According to '${title}', what...", "In '${title}', which...", "What does '${title}' say about..."
+- Rephrase in French: "D'après '${title}'", "Dans '${title}'", "Selon '${title}'"
+- Rephrase in Darija: "حسب '${title}'", "فـ '${title}'"
+
 Rules:
 - Exactly 3 options per language.
-- Questions must test comprehension, details, and inference from the text.
+- Questions must test comprehension, details, and inference from "${title}".
 - Distractors must be plausible but clearly wrong.
 - Do not generate options that are just re-ordered words from the same phrase.
 - Keep options concise but meaningful (at least 2 words).
-- correctIndex must point to the right option in each options array.`;
+- correctIndex must point to the right option in each options array.
+- Make questions specific and relevant to the actual content of "${title}" - not generic.`;
 
   try {
     const response = await fetch(GEMINI_QUIZ_ENDPOINT, {
@@ -777,9 +785,9 @@ const generateSmartQuestionsForText = async (text, existingQuestions = []) => {
 const buildDefaultQuiz = () => [
   {
     _id: 'q1',
-    questionTextFr: "Que fait l'intelligence artificielle dans ce texte ?",
-    questionTextEn: 'What does artificial intelligence do in this text?',
-    questionTextDarija: 'الذكاء الاصطناعي كيعاون على شنو فهاد النص؟',
+    questionTextFr: "Que fait l'intelligence artificielle selon le texte?",
+    questionTextEn: 'What does artificial intelligence do according to the text?',
+    questionTextDarija: 'الذكاء الاصطناعي كيعاون على شنو؟',
     correctAnswerFr: "Analyser des données",
     correctAnswerEn: 'Analyse data',
     correctAnswerDarija: 'تحليل البيانات',
@@ -792,9 +800,9 @@ const buildDefaultQuiz = () => [
   },
   {
     _id: 'q2',
-    questionTextFr: "Quel est le résultat de l'utilisation de l'IA ?",
+    questionTextFr: "Quel est le résultat de l'utilisation de l'IA?",
     questionTextEn: 'What is the result of using AI?',
-    questionTextDarija: 'شنو النتيجة ديال استعمال الذكاء الاصطناعي هنا؟',
+    questionTextDarija: 'شنو النتيجة ديال استعمال الذكاء الاصطناعي؟',
     correctAnswerFr: 'De meilleures décisions',
     correctAnswerEn: 'Better decisions',
     correctAnswerDarija: 'قرارات احسن',
@@ -807,9 +815,9 @@ const buildDefaultQuiz = () => [
   },
   {
     _id: 'q3',
-    questionTextFr: 'Ce document est-il utile pour apprendre ?',
-    questionTextEn: 'Is this document useful for learning?',
-    questionTextDarija: 'واش هاد النص مفيد للتعلم؟',
+    questionTextFr: 'Cet article est-il utile pour apprendre?',
+    questionTextEn: 'Is this article useful for learning?',
+    questionTextDarija: 'واش هاد الموضوع مفيد للتعلم؟',
     correctAnswerFr: 'Oui, il contient des informations',
     correctAnswerEn: 'Yes, it contains information',
     correctAnswerDarija: 'نعم، فيه معلومات',
@@ -943,9 +951,9 @@ const createDemoData = () => {
   text1.generatedQuestions = [
     {
       _id: 'text_1_q1',
-      questionTextFr: "Sur quoi l'intelligence artificielle a-t-elle le plus grand impact selon ce texte ?",
-      questionTextEn: 'What does artificial intelligence have the greatest impact on according to this text?',
-      questionTextDarija: 'علاش الذكاء الاصطناعي مهم فهاد النص؟',
+      questionTextFr: "Selon \"L'intelligence artificielle transforme notre facon d'apprendre\", quel est le plus grand impact de l'IA ?",
+      questionTextEn: 'What does artificial intelligence have the greatest impact on according to this document?',
+      questionTextDarija: 'علاش الذكاء الاصطناعي مهم حسب الموضوع؟',
       correctAnswerFr: "La façon d'apprendre",
       correctAnswerEn: 'The way we learn',
       correctAnswerDarija: 'طريقة التعلم',
@@ -958,9 +966,9 @@ const createDemoData = () => {
     },
     {
       _id: 'text_1_q2',
-      questionTextFr: "Que permet d'analyser l'intelligence artificielle d'après ce texte ?",
-      questionTextEn: 'What does AI help to analyse according to this text?',
-      questionTextDarija: 'شنو كيحلل الذكاء الاصطناعي فهاد النص؟',
+      questionTextFr: "Que permet d'analyser l'intelligence artificielle dans ce texte?",
+      questionTextEn: 'What does AI help to analyse according to the text?',
+      questionTextDarija: 'شنو كيحلل الذكاء الاصطناعي؟',
       correctAnswerFr: 'Des données',
       correctAnswerEn: 'Data',
       correctAnswerDarija: 'البيانات',
@@ -973,9 +981,9 @@ const createDemoData = () => {
     },
     {
       _id: 'text_1_q3',
-      questionTextFr: "Quel est l'objectif de l'utilisation de l'intelligence artificielle ?",
-      questionTextEn: 'What is the goal of using artificial intelligence?',
-      questionTextDarija: 'شنو هو الهدف من استعمال الذكاء الاصطناعي؟',
+      questionTextFr: "Quel est l'objectif principal mentionné dans ce texte?",
+      questionTextEn: 'What is the main goal mentioned in this text?',
+      questionTextDarija: 'شنو هو الهدف الأساسي؟',
       correctAnswerFr: 'Prendre de meilleures décisions',
       correctAnswerEn: 'Make better decisions',
       correctAnswerDarija: 'قرارات احسن',
@@ -990,7 +998,7 @@ const createDemoData = () => {
   text2.generatedQuestions = [
     {
       _id: 'text_2_q1',
-      questionTextFr: 'Où se situe le Maroc géographiquement ?',
+      questionTextFr: 'Où se situe le Maroc géographiquement selon "Histoire du Maroc"?',
       questionTextEn: 'Where is Morocco located geographically?',
       questionTextDarija: 'فين كاين لمغرب جغرافيا؟',
       correctAnswerFr: "Nord-ouest de l'Afrique",
@@ -1005,7 +1013,7 @@ const createDemoData = () => {
     },
     {
       _id: 'text_2_q2',
-      questionTextFr: "Comment l'histoire du Maroc est-elle décrite dans ce texte ?",
+      questionTextFr: "Comment l'histoire du Maroc est-elle décrite dans ce texte?",
       questionTextEn: "How is Morocco's history described in this text?",
       questionTextDarija: 'كيفاش كيوصف النص تاريخ لمغرب؟',
       correctAnswerFr: 'Riche et diverse',

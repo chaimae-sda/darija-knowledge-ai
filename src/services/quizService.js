@@ -27,6 +27,12 @@ Create exactly 5 multiple-choice comprehension questions that:
 4. Vary in difficulty (easy, medium, hard)
 5. Cover different aspects: main idea, details, inference, vocabulary, theme
 
+IMPORTANT:
+- NEVER use generic phrases like "ce texte", "ce document", "this text", "this document"
+- ALWAYS reference the actual content with specific details from the text
+- Ask about SPECIFIC facts, events, people, dates, or ideas mentioned in the text
+- Make questions RELEVANT and SPECIFIC, not generic
+
 Return ONLY a valid JSON array (no markdown, no comments):
 [
   {
@@ -44,6 +50,7 @@ Rules:
 - Correct answer must be factually in the text
 - Distractors should be plausible false answers, not absurd
 - Use simple language suitable for learners
+- Questions must be SPECIFIC to the document content (mention key facts, not generic references)
 - Return ONLY the JSON array, nothing else`;
 
     const result = await model.generateContent({
