@@ -1,20 +1,22 @@
+// Load .env BEFORE any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
+// Now import only modules that DON'T depend on env vars
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { connectDB } from './config/database.js';
-import { authenticateToken, errorHandler } from './middleware/auth.js';
-
-// Import routes
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import textRoutes from './routes/texts.js';
-import quizRoutes from './routes/quiz.js';
-import journeyRoutes from './routes/journey.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Dynamically import modules that depend on environment variables
+const { connectDB } = await import('./config/database.js');
+const authRoutes = await import('./routes/auth.js').then(m => m.default);
+const userRoutes = await import('./routes/users.js').then(m => m.default);
+const textRoutes = await import('./routes/texts.js').then(m => m.default);
+const quizRoutes = await import('./routes/quiz.js').then(m => m.default);
+const journeyRoutes = await import('./routes/journey.js').then(m => m.default);
+const { authenticateToken, errorHandler } = await import('./middleware/auth.js').then(m => ({ authenticateToken: m.authenticateToken, errorHandler: m.errorHandler }));
 
 // Middleware
 app.use(cors({

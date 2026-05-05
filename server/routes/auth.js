@@ -229,20 +229,4 @@ router.post('/logout', async (req, res) => {
 });
 
 export default router;
-        username: user.username,
-        email: user.email,
-        level: user.level,
-        xp: user.xp,
-        avatar: user.avatar,
-        stats: user.stats,
-        badges: user.badges
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-export default router;
 

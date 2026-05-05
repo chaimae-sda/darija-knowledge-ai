@@ -24,34 +24,28 @@ A complete, AI-powered Moroccan Darija language learning platform with OCR, tran
 
 1. **Install dependencies:**
    ```bash
-   # Windows
-   QUICKSTART.bat
-   
-   # Mac/Linux
-   bash QUICKSTART.sh
+   npm install
+   cd server && npm install
    ```
 
 2. **Setup environment variables:**
    
-   Edit `server/.env`:
+   Copy `.env.example` to `.env` and add your API keys:
    ```env
-   PORT=5000
-   MONGODB_URI=mongodb://localhost:27017/darija-knowledge-ai
-   JWT_SECRET=your_secret_key_here
-   GOOGLE_API_KEY=your_api_key
-   NODE_ENV=development
-   CORS_ORIGIN=http://localhost:5173
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   VITE_GOOGLE_API_KEY=your_google_api_key
    ```
+   See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for detailed Supabase configuration.
 
-3. **Start services (3 terminals):**
+3. **Start services (2 terminals):**
    ```bash
-   # Terminal 1: MongoDB
-   mongod
-   
-   # Terminal 2: Backend
+   # Terminal 1: Backend
    cd server && npm run dev
    
-   # Terminal 3: Frontend
+   # Terminal 2: Frontend
    npm run dev
    ```
 
@@ -100,9 +94,8 @@ darija-knowledge-ai/
 │   ├── context/         # Auth state
 │   └── assets/          # Images
 │
-├── SETUP_GUIDE.md       # Detailed documentation
-├── IMPLEMENTATION_SUMMARY.md  # What's built
-└── docker-compose.yml   # Docker support
+├── SUPABASE_SETUP.md    # Supabase configuration guide
+└── supabase/            # Database schema
 ```
 
 ## 🔌 API Endpoints
@@ -152,36 +145,26 @@ darija-knowledge-ai/
 
 ## 📖 Documentation
 
-- [Complete Setup Guide](./SETUP_GUIDE.md) - Detailed installation and configuration
-- [Implementation Summary](./IMPLEMENTATION_SUMMARY.md) - Full feature list and architecture
-- [Quick Start Scripts](./QUICKSTART.bat) - Automated setup
+- [Supabase Setup Guide](./SUPABASE_SETUP.md) - Database configuration
 
 ## 🐛 Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| MongoDB connection error | Run `mongod` in separate terminal |
+| Supabase connection error | Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in server/.env |
 | API 404 errors | Check backend runs on :5000 |
 | OCR not working | Use clear image, PNG/JPG format |
 | Google API error | Get key from https://makersuite.google.com/app/apikey |
-| Login fails | Check JWT_SECRET in server/.env |
+| Login fails | Verify Supabase credentials and run schema.sql in SQL Editor |
 
 ## 🚢 Deployment
 
-### Docker
-```bash
-docker-compose up --build
-```
-
-### Manual Production
-See [SETUP_GUIDE.md](./SETUP_GUIDE.md)
+See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for hosting your Supabase database and deploying to production.
 
 ## 📊 Database Models
 
-- **User** - Accounts, profiles, stats
-- **Text** - Saved documents, translations
-- **Question** - Quiz questions
-- **UserProgress** - Learning data, XP
+- **profiles** - User accounts, profiles, stats
+- **texts** - Saved documents, translations
 
 ## 🔒 Security
 
@@ -194,9 +177,9 @@ See [SETUP_GUIDE.md](./SETUP_GUIDE.md)
 ## 💡 Next Steps
 
 1. Get Google API key from https://makersuite.google.com/app/apikey
-2. Install MongoDB locally or use MongoDB Atlas
-3. Run QUICKSTART.bat (Windows) or QUICKSTART.sh (Mac/Linux)
-4. Start MongoDB, backend, and frontend
+2. Set up Supabase project (see SUPABASE_SETUP.md)
+3. Configure your .env with Supabase credentials
+4. Start backend and frontend
 5. Open http://localhost:5173
 
 ## 📝 Test Account
@@ -208,7 +191,7 @@ Password: test123456
 
 ## 🤝 Support
 
-- Check [SETUP_GUIDE.md](./SETUP_GUIDE.md) for detailed help
+- Check [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for database configuration
 - View logs in terminal for debugging
 - Check browser console for frontend errors
 
