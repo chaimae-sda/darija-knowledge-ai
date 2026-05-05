@@ -4,6 +4,7 @@ import { ocrService } from './ocrService';
 const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL || 'https://pagfnzzrzwwbwyljlovo.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   'sb_publishable_KBwGs_g-cjNAJnnfSY-ZMw_MpCmZkTH';
 
@@ -1101,14 +1102,25 @@ const supabaseAuthRequest = async (path, options) =>
     },
   });
 
-const supabaseRestRequest = async (path, { method = 'GET', body, token = getAccessToken(), prefer } = {}) =>
-  fetchJson(`${SUPABASE_URL}/rest/v1${path}`, {
+const supabaseRestRequest = async (path, { method = 'GET', body, token = getAccessToken(), prefer } = {}) => {
+  if (!token) {
+    throw new Error('Unauthorized');
+  }
+
+  return fetchJson(`${SUPABASE_URL}/rest/v1${path}`, {
     method,
     headers: {
       ...authHeaders(token),
       ...(prefer ? { Prefer: prefer } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+};
+
+const getSupabaseAuthUser = () =>
+  supabaseAuthRequest('/user', {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
   });
 
 const ensureSupabaseProfile = async (authUser, overrides = {}) => {
@@ -1155,10 +1167,7 @@ const getSupabaseProfile = async (authUser = null) => {
   }
 
   if (!authUser) {
-    const currentAuthUser = await supabaseAuthRequest('/user', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${getAccessToken()}` },
-    });
+    const currentAuthUser = await getSupabaseAuthUser();
     return ensureSupabaseProfile(currentAuthUser);
   }
 
@@ -1696,9 +1705,10 @@ export const apiClient = {
   },
 
   saveText: async (title, originalText, darijaText, language = 'fr', source = 'upload', fileName = '', mimeType = '') => {
-    const user = await getSupabaseProfile();
+    const authUser = await getSupabaseAuthUser();
+    const user = await getSupabaseProfile(authUser);
     const payload = {
-      owner_id: user.id,
+      owner_id: authUser.id,
       title,
       original_text: originalText,
       darija_text: darijaText,

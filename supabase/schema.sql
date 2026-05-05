@@ -18,7 +18,7 @@ create table if not exists public.profiles (
 
 create table if not exists public.texts (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users (id) on delete cascade,
+  owner_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   title text not null,
   original_text text not null,
   darija_text text not null,
@@ -58,6 +58,10 @@ execute function public.set_updated_at();
 alter table public.profiles enable row level security;
 alter table public.texts enable row level security;
 
+grant usage on schema public to anon, authenticated;
+grant select, insert, update on public.profiles to authenticated;
+grant select, insert, update, delete on public.texts to authenticated;
+
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
 on public.profiles
@@ -81,18 +85,21 @@ drop policy if exists "texts_select_own" on public.texts;
 create policy "texts_select_own"
 on public.texts
 for select
+to authenticated
 using (auth.uid() = owner_id);
 
 drop policy if exists "texts_insert_own" on public.texts;
 create policy "texts_insert_own"
 on public.texts
 for insert
+to authenticated
 with check (auth.uid() = owner_id);
 
 drop policy if exists "texts_update_own" on public.texts;
 create policy "texts_update_own"
 on public.texts
 for update
+to authenticated
 using (auth.uid() = owner_id)
 with check (auth.uid() = owner_id);
 
@@ -100,4 +107,5 @@ drop policy if exists "texts_delete_own" on public.texts;
 create policy "texts_delete_own"
 on public.texts
 for delete
+to authenticated
 using (auth.uid() = owner_id);
