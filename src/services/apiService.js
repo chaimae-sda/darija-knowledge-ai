@@ -379,11 +379,16 @@ const generateBestQuestionsForText = async (text) => {
     return aiQuestions;
   }
 
-  // Fall back to keyword-based generation if AI unavailable or fails
-  return generateQuestionsFromText(text);
+  // Return empty array instead of keyword-based mock generation
+  return [];
 };
 
 const generateQuestionsFromText = (text) => {
+  return [];
+};
+
+// Ignore the rest of generateQuestionsFromText, but I don't need to delete it.
+const dummyGenerateQuestionsFromText = (text) => {
   const originalText = text?.originalText?.trim() || text?.original_text?.trim() || '';
   const darijaText = text?.darijaText?.trim() || text?.darija_text?.trim() || '';
   const title = text?.title?.trim() || 'هاد الوثيقة';
@@ -665,11 +670,12 @@ IMPORTANT INSTRUCTIONS:
 Rules:
 - Exactly 3 options per language.
 - Questions must test comprehension, details, and inference from "${title}".
-- Distractors must be plausible but clearly wrong.
+- Questions should be of medium difficulty: not too easy, and not too difficult. They must test genuine understanding.
+- Distractors must be plausible, relevant to the text content, but clearly wrong.
 - Do not generate options that are just re-ordered words from the same phrase.
 - Keep options concise but meaningful (at least 2 words).
 - correctIndex must point to the right option in each options array.
-- Make questions specific and relevant to the actual content of "${title}" - not generic.`;
+- Make questions specific and highly relevant to the actual content of "${title}" - not generic.`;
 
   try {
     const response = await fetch(GEMINI_QUIZ_ENDPOINT, {
@@ -819,10 +825,10 @@ const needsQuestionRefresh = (questions = []) =>
 
 const ensureHighQualityQuestions = (text, existingQuestions = []) => {
   const hasOldEngine = existingQuestions.some(
-    (q) => q?.engineVersion !== QUIZ_ENGINE_VERSION && q?.engineVersion !== QUIZ_FALLBACK_ENGINE_VERSION
+    (q) => q?.engineVersion !== QUIZ_ENGINE_VERSION
   );
   if (!Array.isArray(existingQuestions) || existingQuestions.length === 0 || isLowQualityGeneratedQuiz(existingQuestions) || hasOldEngine) {
-    return generateQuestionsFromText(text);
+    return [];
   }
 
   return existingQuestions;
@@ -1456,7 +1462,7 @@ const mockHandlers = {
     const text = getUserTexts(db).find((item) => item._id === textId);
 
     if (!text) {
-      return buildDefaultQuiz();
+      return [];
     }
 
     const refreshedQuestions = await generateSmartQuestionsForText(text, text.generatedQuestions);
@@ -1464,7 +1470,7 @@ const mockHandlers = {
     text.generatedQuestions = refreshedQuestions;
     saveMockDb(db);
 
-    return refreshedQuestions.length > 0 ? refreshedQuestions : buildDefaultQuiz();
+    return refreshedQuestions.length > 0 ? refreshedQuestions : [];
   },
 
   getJourneyProgress: async () => {

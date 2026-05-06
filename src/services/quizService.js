@@ -48,8 +48,9 @@ Return ONLY a valid JSON array (no markdown, no comments):
 Rules:
 - All 3 options must be grammatically similar
 - Correct answer must be factually in the text
-- Distractors should be plausible false answers, not absurd
+- Distractors should be plausible false answers, relevant to the text, but not absurd
 - Use simple language suitable for learners
+- Questions must be of medium difficulty: not too easy, and not too difficult.
 - Questions must be SPECIFIC to the document content (mention key facts, not generic references)
 - Return ONLY the JSON array, nothing else`;
 
@@ -139,117 +140,9 @@ const extractTextStructure = (text) => {
   return { sentences, topWords, multiWordPhrases };
 };
 
-// Fallback generation - much smarter version
+// Fallback generation removed - only use AI
 const generateBasicQuestions = (text) => {
-  const { sentences, topWords, multiWordPhrases } = extractTextStructure(text);
-  
-  if (sentences.length < 2 || topWords.length < 3) {
-    console.warn('Text structure insufficient for questions');
-    return null;
-  }
-
-  const questions = [];
-  const usedConcepts = new Set();
-
-  // Q1: Main topic from first sentence
-  if (sentences[0]) {
-    const firstSentence = sentences[0];
-    const mainConcept = multiWordPhrases[0] || topWords[0];
-    
-    // Create 3 distinct alternatives
-    const concept1 = mainConcept;
-    const concept2 = multiWordPhrases[2] || topWords[2] || 'something different';
-    const concept3 = multiWordPhrases[4] || topWords[4] || 'another topic';
-
-    if (concept1 && concept1 !== concept2 && concept1 !== concept3) {
-      questions.push({
-        id: 1,
-        type: 'comprehension',
-        question: `What is the first thing discussed in this text?`,
-        questionDarija: `شنو أول حاجة اللي كتهضر عليها النص؟`,
-        options: [concept1, concept2, concept3],
-        correct: 0,
-        difficulty: 'easy'
-      });
-      usedConcepts.add(concept1);
-    }
-  }
-
-  // Q2: Key detail from middle
-  if (sentences.length > 2) {
-    const middleSentence = sentences[Math.floor(sentences.length / 2)];
-    const detailConcept = multiWordPhrases[Math.floor(multiWordPhrases.length / 2)] || topWords[1];
-    const alt1 = topWords[3] || 'secondary topic';
-    const alt2 = topWords[5] || 'general concept';
-
-    if (detailConcept && detailConcept !== alt1 && detailConcept !== alt2) {
-      questions.push({
-        id: 2,
-        type: 'factual',
-        question: `Which of these is specifically mentioned in the text?`,
-        questionDarija: `واش هاد الحاجة مكتوبة بالضبط فالنص؟`,
-        options: [detailConcept, alt1, alt2],
-        correct: 0,
-        difficulty: 'easy'
-      });
-      usedConcepts.add(detailConcept);
-    }
-  }
-
-  // Q3: Relationship/Connection question
-  if (sentences.length > 1 && topWords.length > 1) {
-    questions.push({
-      id: 3,
-      type: 'inference',
-      question: `What is the relationship between the main ideas in this text?`,
-      questionDarija: `شنو العلاقة بين الأفكار المهمة فالنص؟`,
-      options: [
-        'They explain different aspects of the same topic',
-        'They contradict each other',
-        'They are completely unrelated'
-      ],
-      correct: 0,
-      difficulty: 'medium'
-    });
-  }
-
-  // Q4: Most important concept
-  if (topWords.length > 2) {
-    const important = topWords[0];
-    const lessImportant1 = topWords[2];
-    const lessImportant2 = topWords[4] || 'supporting detail';
-
-    if (important && important !== lessImportant1 && important !== lessImportant2) {
-      questions.push({
-        id: 4,
-        type: 'vocabulary',
-        question: `Which concept appears most frequently in this text?`,
-        questionDarija: `شنو الحاجة الللي تتكرر بزاف فالنص؟`,
-        options: [important, lessImportant1, lessImportant2],
-        correct: 0,
-        difficulty: 'medium'
-      });
-    }
-  }
-
-  // Q5: Purpose/Theme
-  questions.push({
-    id: 5,
-    type: 'comprehension',
-    question: `What is the overall purpose of this text?`,
-    questionDarija: `شنو القصد من هاد النص؟`,
-    options: [
-      'To explain and inform the reader about a topic',
-      'To entertain without any educational value',
-      'To confuse the reader intentionally'
-    ],
-    correct: 0,
-    difficulty: 'medium'
-  });
-
-  return questions.filter(q => 
-    q.options && q.options.length === 3 && q.options.every(o => o && o.length > 0)
-  );
+  return null;
 };
 
 /**
@@ -294,17 +187,7 @@ export const quizService = {
       return null;
     }
 
-    // Shuffle for variety
-    const shuffled = questions
-      .sort(() => Math.random() - 0.5)
-      .map((q, idx) => ({ ...q, id: idx + 1 }));
-
-    return {
-      title: 'Comprehension Quiz',
-      desc: 'Questions based on text content',
-      questionCount: shuffled.length,
-      questions: shuffled
-    };
+    return null; // Force null instead of mocked basic questions
   },
 
   getQuizMetadata: (quiz) => {
