@@ -23,6 +23,18 @@ const PATH_POINTS = [
 ];
 
 const XP_PER_LEVEL = 500;
+const MIN_QUIZ_WORDS = 12;
+
+const countWords = (value = '') =>
+  String(value)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+const canBuildQuizFromText = (text) => {
+  const sourceText = `${text?.originalText || ''} ${text?.darijaText || ''}`.trim();
+  return countWords(sourceText) >= MIN_QUIZ_WORDS || (text?.generatedQuestions || []).length > 0;
+};
 
 const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
   const { user } = useContext(AuthContext);
@@ -47,18 +59,20 @@ const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
   const handleNodeClick = (levelId, isUnlocked) => {
     if (!isUnlocked || !onStartQuiz) return;
 
-    if (texts.length === 0) {
+    const playableTexts = texts.filter(canBuildQuizFromText);
+
+    if (playableTexts.length === 0) {
       setShowNoQuestionsPrompt(true);
       return;
     }
 
     const completedTextIds = user?.stats?.completedTextIds || [];
 
-    const unquizzedTexts = texts.filter(
+    const unquizzedTexts = playableTexts.filter(
       (text) => !completedTextIds.includes(text._id)
     );
 
-    const pool = unquizzedTexts.length > 0 ? unquizzedTexts : texts;
+    const pool = unquizzedTexts.length > 0 ? unquizzedTexts : playableTexts;
     const text = pool[(levelId - 1) % pool.length];
 
     onStartQuiz(text._id);

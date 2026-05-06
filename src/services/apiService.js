@@ -1044,6 +1044,7 @@ const normalizeTextRecord = (record) => ({
   readCount: record.read_count || 0,
   isFavorite: Boolean(record.is_favorite),
   createdAt: record.created_at || new Date().toISOString(),
+  updatedAt: record.updated_at || record.created_at || new Date().toISOString(),
 });
 
 const parseErrorMessage = async (response) => {

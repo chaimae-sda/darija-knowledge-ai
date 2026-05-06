@@ -6,6 +6,25 @@ alter table public.texts enable row level security;
 alter table public.texts
   alter column owner_id set default auth.uid();
 
+alter table public.texts
+  add column if not exists updated_at timestamptz not null default now();
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists texts_set_updated_at on public.texts;
+create trigger texts_set_updated_at
+before update on public.texts
+for each row
+execute function public.set_updated_at();
+
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on public.texts to authenticated;
 grant select, insert, update on public.profiles to authenticated;
