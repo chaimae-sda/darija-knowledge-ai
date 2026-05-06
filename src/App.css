@@ -286,6 +286,28 @@
   width: 208px;
 }
 
+.app-language-panel {
+  right: 0;
+  z-index: 30;
+}
+
+.header-action-group,
+.quiz-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.screen-header .quiz-header-actions {
+  min-width: 112px;
+}
+
+.screen-header .language-menu--app,
+.journey-screen__header .language-menu--app {
+  flex: 0 0 auto;
+}
+
 .language-menu__list {
   display: grid;
   gap: 8px;

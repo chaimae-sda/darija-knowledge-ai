@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, Globe, Languages, MoreHorizontal, Pause, Play, RotateCcw, RotateCw, Sparkles, Volume2 } from 'lucide-react';
+import { ChevronLeft, Globe, Languages, Pause, Play, RotateCcw, RotateCw, Sparkles, Volume2 } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useI18n } from '../context/I18nContext';
 import { audioService } from '../services/audioService';
 import { apiClient } from '../services/apiService';
@@ -243,9 +244,7 @@ const Reading = ({ textId, onBack, onStartQuiz }) => {
             <ChevronLeft size={20} />
           </button>
           <h2>{t('reading.audioTitle')}</h2>
-          <button type="button" className="icon-chip icon-chip--dark">
-            <MoreHorizontal size={20} />
-          </button>
+          <LanguageSwitcher tone="dark" />
         </header>
 
         <div className="audio-artwork">
@@ -319,9 +318,7 @@ const Reading = ({ textId, onBack, onStartQuiz }) => {
           <ChevronLeft size={20} />
         </button>
         <h2>{t('reading.title')}</h2>
-        <button type="button" className="icon-chip">
-          <MoreHorizontal size={20} />
-        </button>
+        <LanguageSwitcher />
       </header>
 
       <div className="reading-card reading-card--light">

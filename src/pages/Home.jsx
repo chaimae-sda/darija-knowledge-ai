@@ -1,5 +1,6 @@
 import React from 'react';
-import { Bell, BookOpen, Camera, CheckCheck, FileUp, Globe, Moon, Sun } from 'lucide-react';
+import { Bell, BookOpen, Camera, CheckCheck, FileUp, Moon, Sun } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -15,9 +16,8 @@ const Home = ({
   onToggleNotifications,
   onMarkNotificationsRead,
   notificationsOpen = false,
-  language,
 }) => {
-  const { t, setLanguage, languages } = useI18n();
+  const { t } = useI18n();
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -25,29 +25,7 @@ const Home = ({
       <header className="phone-status-bar">
         <span className="home-header-spacer" />
         <div className="home-header-actions">
-          <details className="language-menu">
-            <summary className="icon-chip icon-chip--ghost" aria-label={t('home.chooseLanguage')}>
-              <Globe size={18} />
-            </summary>
-            <div className="home-floating-panel home-floating-panel--language">
-              <div className="home-panel__header">
-                <strong>{t('home.language')}</strong>
-              </div>
-              <div className="language-menu__list">
-                {languages.map((item) => (
-                  <button
-                    key={item.code}
-                    type="button"
-                    className={`language-menu__item ${language === item.code ? 'is-active' : ''}`}
-                    onClick={() => setLanguage(item.code)}
-                  >
-                    <span>{item.nativeLabel}</span>
-                    <small>{item.label}</small>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </details>
+          <LanguageSwitcher />
 
           <button
             type="button"

@@ -5,9 +5,9 @@ import {
   ChevronLeft,
   FileUp,
   Lock,
-  MoreHorizontal,
   X,
 } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { AuthContext } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { apiClient } from '../services/apiService';
@@ -121,9 +121,7 @@ const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
 
         <h2>{t('journey.title')}</h2>
 
-        <button className="icon-chip icon-chip--dark">
-          <MoreHorizontal size={18} />
-        </button>
+        <LanguageSwitcher tone="dark" />
       </header>
 
       {/* PROFILE */}

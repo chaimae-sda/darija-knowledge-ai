@@ -30,7 +30,7 @@ const persistNotifications = (notifications) => {
 
 const AppContent = () => {
   const { user, loading } = useContext(AuthContext);
-  const { t, language } = useI18n();
+  const { t } = useI18n();
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false,
   );
@@ -214,7 +214,6 @@ const AppContent = () => {
             onToggleNotifications={toggleNotifications}
             onMarkNotificationsRead={markNotificationsRead}
             notificationsOpen={notificationsOpen}
-            language={language}
           />
         );
       case 'library':

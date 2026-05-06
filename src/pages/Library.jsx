@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Clock3, Heart, HelpCircle, MoreVertical, Search, SquareArrowOutUpRight, Star, Trash2 } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useI18n } from '../context/I18nContext';
 import { apiClient } from '../services/apiService';
 import { libraryService } from '../services/libraryService';
@@ -74,6 +75,7 @@ const Library = ({ onSelectText }) => {
         <div>
           <p className="eyebrow">{t('library.eyebrow')}</p>
         </div>
+        <LanguageSwitcher />
       </header>
 
       <div className="section-toggle">

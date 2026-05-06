@@ -266,6 +266,21 @@ const getPreferredConcepts = (concepts = [], fallbackConcepts = []) => {
   return multiWordConcepts.length ? multiWordConcepts : merged;
 };
 
+const hasArabicScript = (value = '') => /[\u0600-\u06FF]/u.test(String(value));
+
+const getLocaleConcepts = (concepts = [], locale, fallbackConcepts = []) => {
+  const localeFiltered =
+    locale === 'darija'
+      ? concepts.filter(hasArabicScript)
+      : concepts.filter((item) => !hasArabicScript(item));
+  const fallbackFiltered =
+    locale === 'darija'
+      ? fallbackConcepts.filter(hasArabicScript)
+      : fallbackConcepts.filter((item) => !hasArabicScript(item));
+
+  return dedupeCaseInsensitive([...localeFiltered, ...fallbackFiltered]);
+};
+
 const getBackupLabelsByLocale = (localeHint = '') => {
   if (/[\u0600-\u06FF]/u.test(localeHint)) {
     return ['معلومة مرتبطة بالنص', 'تفصيل مهم', 'موضوع قريب'];
@@ -282,15 +297,20 @@ const buildFallbackOptions = (
   answer,
   keywords = [],
   fallbacks = ['معلومة عامة', 'تفصيل ثانوي'],
-  { minWordCount = 1 } = {},
+  { minWordCount = 1, locale = 'fr' } = {},
 ) => {
   const normalizedAnswer = normalizeToken(answer);
+  const localeFallbacks =
+    locale === 'darija'
+      ? ['موضوع آخر', 'معلومة عامة', 'تفصيل إضافي']
+      : locale === 'en'
+        ? ['another topic', 'general information', 'additional detail']
+        : ['autre sujet', 'information générale', 'détail complémentaire'];
+  const localeMatches = (item) => (locale === 'darija' ? hasArabicScript(item) : !hasArabicScript(item));
   const candidates = dedupeCaseInsensitive([
-    ...keywords.filter((item) => item && normalizeToken(item) !== normalizedAnswer),
+    ...keywords.filter((item) => item && normalizeToken(item) !== normalizedAnswer && localeMatches(item)),
     ...fallbacks,
-    'موضوع آخر',
-    'معلومة عامة',
-    'تفصيل إضافي',
+    ...localeFallbacks,
   ]).filter((item) => normalizeToken(item) !== normalizedAnswer);
 
   const qualityCandidates = filterByMinWordCount(candidates, minWordCount);
@@ -377,10 +397,9 @@ const generateQuestionsFromText = (text) => {
   const darijaConcepts = getConceptPool(darijaText || sourceText, title);
   const allConcepts = getConceptPool(sourceText, title);
 
-  const frPreferredConcepts = getPreferredConcepts(frConcepts, allConcepts);
-  const darijaPreferredConcepts = getPreferredConcepts(darijaConcepts, allConcepts);
-  const allPreferredConcepts = getPreferredConcepts(allConcepts, frConcepts);
-
+  const frPreferredConcepts = getLocaleConcepts(getPreferredConcepts(frConcepts, allConcepts), 'fr', DEFAULT_CONCEPT_FALLBACKS.fr);
+  const enPreferredConcepts = ['main idea', 'key information', 'important detail', 'useful idea', 'related theme'];
+  const darijaPreferredConcepts = getLocaleConcepts(getPreferredConcepts(darijaConcepts, allConcepts), 'darija', DEFAULT_CONCEPT_FALLBACKS.darija);
   const frSentences = (originalText || sourceText)
     .split(/[.!?\n]+/)
     .map((s) => s.trim())
@@ -391,14 +410,18 @@ const generateQuestionsFromText = (text) => {
     .map((s) => s.trim())
     .filter((s) => s.length > 12);
 
-  const firstFrAnswer = frPreferredConcepts[0] || allPreferredConcepts[0] || title;
-  const secondFrAnswer = frPreferredConcepts[1] || allPreferredConcepts[1] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
-  const thirdFrAnswer = frPreferredConcepts[2] || allPreferredConcepts[2] || DEFAULT_CONCEPT_FALLBACKS.fr[1];
-  const fourthFrAnswer = frPreferredConcepts[3] || allPreferredConcepts[3] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
-  const firstDarijaAnswer = darijaPreferredConcepts[0] || allPreferredConcepts[0] || title;
-  const secondDarijaAnswer = darijaPreferredConcepts[1] || allPreferredConcepts[1] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
-  const thirdDarijaAnswer = darijaPreferredConcepts[2] || allPreferredConcepts[2] || DEFAULT_CONCEPT_FALLBACKS.darija[1];
-  const fourthDarijaAnswer = darijaPreferredConcepts[3] || allPreferredConcepts[3] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
+  const firstFrAnswer = frPreferredConcepts[0] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
+  const secondFrAnswer = frPreferredConcepts[1] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
+  const thirdFrAnswer = frPreferredConcepts[2] || DEFAULT_CONCEPT_FALLBACKS.fr[1];
+  const fourthFrAnswer = frPreferredConcepts[3] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
+  const firstEnAnswer = enPreferredConcepts[0] || 'main idea';
+  const secondEnAnswer = enPreferredConcepts[1] || 'key information';
+  const thirdEnAnswer = enPreferredConcepts[2] || 'important detail';
+  const fourthEnAnswer = enPreferredConcepts[3] || 'useful idea';
+  const firstDarijaAnswer = darijaPreferredConcepts[0] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
+  const secondDarijaAnswer = darijaPreferredConcepts[1] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
+  const thirdDarijaAnswer = darijaPreferredConcepts[2] || DEFAULT_CONCEPT_FALLBACKS.darija[1];
+  const fourthDarijaAnswer = darijaPreferredConcepts[3] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
 
   const introFrSnippet = frSentences[0]
     ? `${frSentences[0].slice(0, 88)}${frSentences[0].length > 88 ? '...' : ''}`
@@ -418,13 +441,13 @@ const generateQuestionsFromText = (text) => {
       questionTextEn: `What is "${title}" mainly about?`,
       questionTextDarija: `ما هو الموضوع الرئيسي في "${title}"؟`,
       correctAnswerFr: firstFrAnswer,
-      correctAnswerEn: firstFrAnswer,
+      correctAnswerEn: firstEnAnswer,
       correctAnswerDarija: firstDarijaAnswer,
-      optionsFr: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, frFallbacks, { minWordCount: 2 }),
-      optionsEn: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, enFallbacks, { minWordCount: 2 }),
-      optionsDarija: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2 }),
+      optionsFr: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, frFallbacks, { minWordCount: 2, locale: 'fr' }),
+      optionsEn: buildFallbackOptions(firstEnAnswer, enPreferredConcepts, enFallbacks, { minWordCount: 2, locale: 'en' }),
+      optionsDarija: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
       correctAnswer: firstDarijaAnswer,
-      options: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2 }),
+      options: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
       xpReward: 25,
       engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
     },
@@ -434,13 +457,13 @@ const generateQuestionsFromText = (text) => {
       questionTextEn: `Which key concept is explained in "${title}"?`,
       questionTextDarija: `شنو من مفهوم مهم متشرح فالنص "${title}"؟`,
       correctAnswerFr: secondFrAnswer,
-      correctAnswerEn: secondFrAnswer,
+      correctAnswerEn: secondEnAnswer,
       correctAnswerDarija: secondDarijaAnswer,
-      optionsFr: buildFallbackOptions(secondFrAnswer, frPreferredConcepts.slice().reverse(), frFallbacks, { minWordCount: 2 }),
-      optionsEn: buildFallbackOptions(secondFrAnswer, frPreferredConcepts.slice().reverse(), enFallbacks, { minWordCount: 2 }),
-      optionsDarija: buildFallbackOptions(secondDarijaAnswer, darijaPreferredConcepts.slice().reverse(), darijaFallbacks, { minWordCount: 2 }),
+      optionsFr: buildFallbackOptions(secondFrAnswer, frPreferredConcepts.slice().reverse(), frFallbacks, { minWordCount: 2, locale: 'fr' }),
+      optionsEn: buildFallbackOptions(secondEnAnswer, enPreferredConcepts.slice().reverse(), enFallbacks, { minWordCount: 2, locale: 'en' }),
+      optionsDarija: buildFallbackOptions(secondDarijaAnswer, darijaPreferredConcepts.slice().reverse(), darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
       correctAnswer: secondDarijaAnswer,
-      options: buildFallbackOptions(secondDarijaAnswer, darijaPreferredConcepts.slice().reverse(), darijaFallbacks, { minWordCount: 2 }),
+      options: buildFallbackOptions(secondDarijaAnswer, darijaPreferredConcepts.slice().reverse(), darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
       xpReward: 25,
       engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
     },
@@ -450,13 +473,13 @@ const generateQuestionsFromText = (text) => {
       questionTextEn: `Which rephrasing matches this passage: "${introFrSnippet}"?`,
       questionTextDarija: `شنو الصياغة اللي كتبقى وفية لهاد المقطع: "${introDarijaSnippet}"؟`,
       correctAnswerFr: thirdFrAnswer,
-      correctAnswerEn: thirdFrAnswer,
+      correctAnswerEn: thirdEnAnswer,
       correctAnswerDarija: thirdDarijaAnswer,
-      optionsFr: buildFallbackOptions(thirdFrAnswer, frPreferredConcepts, frFallbacks, { minWordCount: 2 }),
-      optionsEn: buildFallbackOptions(thirdFrAnswer, frPreferredConcepts, enFallbacks, { minWordCount: 2 }),
-      optionsDarija: buildFallbackOptions(thirdDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2 }),
+      optionsFr: buildFallbackOptions(thirdFrAnswer, frPreferredConcepts, frFallbacks, { minWordCount: 2, locale: 'fr' }),
+      optionsEn: buildFallbackOptions(thirdEnAnswer, enPreferredConcepts, enFallbacks, { minWordCount: 2, locale: 'en' }),
+      optionsDarija: buildFallbackOptions(thirdDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
       correctAnswer: thirdDarijaAnswer,
-      options: buildFallbackOptions(thirdDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2 }),
+      options: buildFallbackOptions(thirdDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
       xpReward: 30,
       engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
     },
@@ -466,13 +489,13 @@ const generateQuestionsFromText = (text) => {
       questionTextEn: `Why is "${title}" useful to read?`,
       questionTextDarija: `علاش قراية "${title}" مفيدة؟`,
       correctAnswerFr: fourthFrAnswer,
-      correctAnswerEn: fourthFrAnswer,
+      correctAnswerEn: fourthEnAnswer,
       correctAnswerDarija: fourthDarijaAnswer,
-      optionsFr: buildFallbackOptions(fourthFrAnswer, frPreferredConcepts, ['opinion sans lien', 'thème complètement différent'], { minWordCount: 2 }),
-      optionsEn: buildFallbackOptions(fourthFrAnswer, frPreferredConcepts, ['unrelated opinion', 'completely different theme'], { minWordCount: 2 }),
-      optionsDarija: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['رأي بلا علاقة', 'موضوع مختلف بزاف'], { minWordCount: 2 }),
+      optionsFr: buildFallbackOptions(fourthFrAnswer, frPreferredConcepts, ['opinion sans lien', 'thème complètement différent'], { minWordCount: 2, locale: 'fr' }),
+      optionsEn: buildFallbackOptions(fourthEnAnswer, enPreferredConcepts, ['unrelated opinion', 'completely different theme'], { minWordCount: 2, locale: 'en' }),
+      optionsDarija: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['رأي بلا علاقة', 'موضوع مختلف بزاف'], { minWordCount: 2, locale: 'darija' }),
       correctAnswer: fourthDarijaAnswer,
-      options: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['رأي بلا علاقة', 'موضوع مختلف بزاف'], { minWordCount: 2 }),
+      options: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['رأي بلا علاقة', 'موضوع مختلف بزاف'], { minWordCount: 2, locale: 'darija' }),
       xpReward: 30,
       engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
     },
@@ -482,13 +505,13 @@ const generateQuestionsFromText = (text) => {
       questionTextEn: `Which statement best matches "${title}"?`,
       questionTextDarija: `شنو الجملة اللي كتناسب "${title}" أكثر؟`,
       correctAnswerFr: firstFrAnswer,
-      correctAnswerEn: firstFrAnswer,
+      correctAnswerEn: firstEnAnswer,
       correctAnswerDarija: firstDarijaAnswer,
-      optionsFr: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, ['idée inventée', 'information non mentionnée'], { minWordCount: 2 }),
-      optionsEn: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, ['invented idea', 'not mentioned information'], { minWordCount: 2 }),
-      optionsDarija: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['فكرة مخترعة', 'معلومة ما جا ذكرهاش'], { minWordCount: 2 }),
+      optionsFr: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, ['idée inventée', 'information non mentionnée'], { minWordCount: 2, locale: 'fr' }),
+      optionsEn: buildFallbackOptions(firstEnAnswer, enPreferredConcepts, ['invented idea', 'not mentioned information'], { minWordCount: 2, locale: 'en' }),
+      optionsDarija: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['فكرة مخترعة', 'معلومة ما جا ذكرهاش'], { minWordCount: 2, locale: 'darija' }),
       correctAnswer: firstDarijaAnswer,
-      options: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['فكرة مخترعة', 'معلومة ما جا ذكرهاش'], { minWordCount: 2 }),
+      options: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['فكرة مخترعة', 'معلومة ما جا ذكرهاش'], { minWordCount: 2, locale: 'darija' }),
       xpReward: 35,
       engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
     },
@@ -513,13 +536,13 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
   const normalizedOptions = dedupeCaseInsensitive(
     (Array.isArray(rawQuestion?.optionsFr) ? rawQuestion.optionsFr : rawQuestion?.options || [])
       .map((option) => String(option || '').trim())
-      .filter(Boolean),
+      .filter((option) => option && !hasArabicScript(option)),
   );
 
   const normalizedOptionsDarija = dedupeCaseInsensitive(
     (Array.isArray(rawQuestion?.optionsDarija) ? rawQuestion.optionsDarija : rawQuestion?.options || [])
       .map((option) => String(option || '').trim())
-      .filter(Boolean),
+      .filter((option) => option && hasArabicScript(option)),
   );
 
   const fallbackFr = ['information secondaire', 'idée sans lien'];
@@ -533,7 +556,7 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
           String(rawQuestion?.correctAnswerFr || normalizedOptions[0] || rawQuestion?.correctAnswer || '').trim(),
           normalizedOptions,
           fallbackFr,
-          { minWordCount: 2 },
+          { minWordCount: 2, locale: 'fr' },
         );
 
   const baseDarijaOptions =
@@ -543,25 +566,25 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
           String(rawQuestion?.correctAnswerDarija || normalizedOptionsDarija[0] || rawQuestion?.correctAnswer || '').trim(),
           normalizedOptionsDarija,
           fallbackDarija,
-          { minWordCount: 2 },
+          { minWordCount: 2, locale: 'darija' },
         );
 
   const baseEnOptions =
     dedupeCaseInsensitive(
       (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
         .map((option) => String(option || '').trim())
-        .filter(Boolean),
+        .filter((option) => option && !hasArabicScript(option)),
     ).slice(0, 3).length === 3
       ? dedupeCaseInsensitive(
           (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
             .map((option) => String(option || '').trim())
-            .filter(Boolean),
+            .filter((option) => option && !hasArabicScript(option)),
         ).slice(0, 3)
       : buildFallbackOptions(
           String(rawQuestion?.correctAnswerEn || baseFrOptions[0]).trim(),
           baseFrOptions,
           fallbackEn,
-          { minWordCount: 2 },
+          { minWordCount: 2, locale: 'en' },
         );
 
   const getCorrect = (options, directAnswer) => {
@@ -753,6 +776,24 @@ const isWeakOptionSet = (options = []) => {
   return false;
 };
 
+const hasWrongScriptForLocale = (values = [], locale) => {
+  const normalized = values
+    .flat()
+    .filter(Boolean)
+    .map((value) => String(value).replace(/"[^"]*"|'[^']*'/g, '').trim())
+    .filter(Boolean);
+
+  if (normalized.length === 0) {
+    return true;
+  }
+
+  if (locale === 'darija') {
+    return normalized.some((value) => !hasArabicScript(value));
+  }
+
+  return normalized.some(hasArabicScript);
+};
+
 const isLowQualityGeneratedQuiz = (questions = []) =>
   !Array.isArray(questions) ||
   questions.length === 0 ||
@@ -763,7 +804,11 @@ const isLowQualityGeneratedQuiz = (questions = []) =>
     const weakAnswer =
       answers.length > 0 && answers.every((answer) => countWords(answer) < MIN_QUALITY_WORD_COUNT);
     const weakOptions = [question?.optionsFr, question?.optionsDarija, question?.options].some(isWeakOptionSet);
-    return weakAnswer || weakOptions;
+    const mixedLanguage =
+      hasWrongScriptForLocale([question?.questionTextFr, question?.correctAnswerFr, question?.optionsFr], 'fr') ||
+      hasWrongScriptForLocale([question?.questionTextEn, question?.correctAnswerEn, question?.optionsEn], 'en') ||
+      hasWrongScriptForLocale([question?.questionTextDarija, question?.correctAnswerDarija, question?.optionsDarija], 'darija');
+    return weakAnswer || weakOptions || mixedLanguage;
   });
 
 const needsQuestionRefresh = (questions = []) =>

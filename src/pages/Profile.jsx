@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Camera, Clock3, LogOut, Shield, Sparkles, Star, Trophy, TrendingUp } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { AuthContext } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { apiClient } from '../services/apiService';
@@ -110,6 +111,7 @@ const Profile = () => {
         <div>
           <p className="eyebrow">{t('profile.eyebrow')}</p>
         </div>
+        <LanguageSwitcher />
       </header>
 
       <div className="profile-hero profile-hero--editable">

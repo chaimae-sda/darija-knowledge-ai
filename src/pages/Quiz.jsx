@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, ChevronLeft } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useI18n } from '../context/I18nContext';
 import { apiClient } from '../services/apiService';
 
@@ -7,21 +8,21 @@ const normalizeOptions = (options) =>
   options.map((option) => (typeof option === 'string' ? option : option.text));
 
 const getQuestionText = (question, language) => {
-  if (language === 'fr') return question?.questionTextFr || question?.questionTextDarija;
-  if (language === 'en') return question?.questionTextEn || question?.questionTextFr || question?.questionTextDarija;
+  if (language === 'fr') return question?.questionTextFr;
+  if (language === 'en') return question?.questionTextEn;
   return question?.questionTextDarija;
 };
 
 const getCorrectAnswer = (question, language) => {
-  if (language === 'fr') return question?.correctAnswerFr || question?.correctAnswer;
-  if (language === 'en') return question?.correctAnswerEn || question?.correctAnswerFr || question?.correctAnswer;
-  return question?.correctAnswerDarija || question?.correctAnswer;
+  if (language === 'fr') return question?.correctAnswerFr;
+  if (language === 'en') return question?.correctAnswerEn;
+  return question?.correctAnswerDarija;
 };
 
 const getOptions = (question, language) => {
-  if (language === 'fr') return question?.optionsFr || question?.options || [];
-  if (language === 'en') return question?.optionsEn || question?.optionsFr || question?.options || [];
-  return question?.optionsDarija || question?.options || [];
+  if (language === 'fr') return question?.optionsFr || [];
+  if (language === 'en') return question?.optionsEn || [];
+  return question?.optionsDarija || [];
 };
 
 const Quiz = ({ textId, onBack, onComplete }) => {
@@ -110,9 +111,12 @@ const Quiz = ({ textId, onBack, onComplete }) => {
           <ChevronLeft size={20} />
         </button>
         <h2>{t('quiz.title')}</h2>
-        <button type="button" className="text-button" onClick={onBack}>
-          {t('quiz.quit')}
-        </button>
+        <div className="quiz-header-actions">
+          <LanguageSwitcher />
+          <button type="button" className="text-button" onClick={onBack}>
+            {t('quiz.quit')}
+          </button>
+        </div>
       </header>
 
       <div className="quiz-progress">

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, ChevronLeft, Loader2, Upload } from 'lucide-react';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useI18n } from '../context/I18nContext';
 import { importCapturedImage, importDocument } from '../services/documentImportService';
 
@@ -138,9 +139,12 @@ const Scan = ({ onTextScanned, onBack }) => {
             <ChevronLeft size={20} />
           </button>
           <h2>{t('scan.title')}</h2>
-          <button type="button" className="icon-chip icon-chip--dark" onClick={() => fileInputRef.current?.click()}>
-            <Upload size={20} />
-          </button>
+          <div className="header-action-group">
+            <LanguageSwitcher tone="dark" />
+            <button type="button" className="icon-chip icon-chip--dark" onClick={() => fileInputRef.current?.click()}>
+              <Upload size={20} />
+            </button>
+          </div>
         </header>
 
         <div className="scan-frame">
