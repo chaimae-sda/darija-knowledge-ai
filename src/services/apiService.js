@@ -127,10 +127,10 @@ const MAX_SINGLE_WORD_OPTIONS = 1;
 const QUIZ_TARGET_COUNT = 5;
 const QUIZ_ENGINE_VERSION = 'smart-ai-v1';
 const QUIZ_FALLBACK_ENGINE_VERSION = 'smart-fallback-v2';
-const MAX_AI_SOURCE_LENGTH = 4000; // Drastically reduced for blazing fast quiz generation (first page is enough for 5 questions)
+const MAX_AI_SOURCE_LENGTH = 30000; // Increased context length for better document understanding
 const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || '';
 const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
-const MISTRAL_MODEL = 'mistral-small-latest';
+const MISTRAL_MODEL = 'mistral-large-latest';
 
 const normalizeToken = (token = '') =>
   token
@@ -810,16 +810,19 @@ const ensureHighQualityQuestions = (text, existingQuestions = []) => {
 };
 
 const generateSmartQuestionsForText = async (text, existingQuestions = []) => {
+  // If we already have high-quality questions, use them immediately (fast)
   const validExisting = ensureHighQualityQuestions(text, existingQuestions);
   if (validExisting.length > 0) {
     return validExisting;
   }
 
+  // Otherwise try to generate/refresh with AI
   const aiQuestions = await generateQuestionsWithAI(text);
   if (Array.isArray(aiQuestions) && aiQuestions.length > 0 && !isLowQualityGeneratedQuiz(aiQuestions)) {
     return aiQuestions;
   }
 
+  // Fallback to extraction-based questions so the text remains playable
   return generateQuestionsFromText(text);
 };
 
@@ -1376,7 +1379,7 @@ const mockHandlers = {
       source,
       fileName,
       mimeType,
-      generatedQuestions: [], // Quiz is generated on-demand when they open the Games module
+      generatedQuestions: await generateBestQuestionsForText({ title, originalText, darijaText }),
       readCount: 0,
       isFavorite: false,
       createdAt: new Date().toISOString(),

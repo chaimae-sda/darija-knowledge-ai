@@ -97,7 +97,7 @@ export const aiService = {
 
         const data = await response.json();
         const translatedContent = data.choices?.[0]?.message?.content;
-        
+
         if (translatedContent) {
           return translatedContent.trim();
         }
