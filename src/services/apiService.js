@@ -543,7 +543,7 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
       .filter((option) => option && hasArabicScript(option)),
   );
 
-  if (normalizedOptions.length < 3 || normalizedOptionsDarija.length < 3) {
+  if (normalizedOptions.length < 2 || normalizedOptionsDarija.length < 2) {
     return null;
   }
 
@@ -556,7 +556,7 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
       .filter((option) => option && !hasArabicScript(option)),
   );
 
-  if (rawEnOptions.length < 3) {
+  if (rawEnOptions.length < 2) {
     return null;
   }
   const baseEnOptions = rawEnOptions.slice(0, 3);
@@ -785,11 +785,7 @@ const isLowQualityGeneratedQuiz = (questions = []) =>
     const weakAnswer =
       answers.length > 0 && answers.every((answer) => countWords(answer) < MIN_QUALITY_WORD_COUNT);
     const weakOptions = [question?.optionsFr, question?.optionsDarija, question?.options].some(isWeakOptionSet);
-    const mixedLanguage =
-      hasWrongScriptForLocale([question?.questionTextFr, question?.correctAnswerFr, question?.optionsFr], 'fr') ||
-      hasWrongScriptForLocale([question?.questionTextEn, question?.correctAnswerEn, question?.optionsEn], 'en') ||
-      hasWrongScriptForLocale([question?.questionTextDarija, question?.correctAnswerDarija, question?.optionsDarija], 'darija');
-    return weakAnswer || weakOptions || mixedLanguage;
+    return weakAnswer || weakOptions; // Removed mixedLanguage check which was too aggressive
   });
 
 const needsQuestionRefresh = (questions = []) =>
