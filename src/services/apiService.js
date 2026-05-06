@@ -127,7 +127,7 @@ const MAX_SINGLE_WORD_OPTIONS = 1;
 const QUIZ_TARGET_COUNT = 5;
 const QUIZ_ENGINE_VERSION = 'smart-ai-v1';
 const QUIZ_FALLBACK_ENGINE_VERSION = 'smart-fallback-v2';
-const MAX_AI_SOURCE_LENGTH = 3600;
+const MAX_AI_SOURCE_LENGTH = 100000;
 const GEMINI_QUIZ_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || '';
 const GEMINI_QUIZ_ENDPOINT = GEMINI_QUIZ_API_KEY
   ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_QUIZ_API_KEY}`
@@ -387,141 +387,7 @@ const generateQuestionsFromText = (text) => {
   return [];
 };
 
-// Ignore the rest of generateQuestionsFromText, but I don't need to delete it.
-const dummyGenerateQuestionsFromText = (text) => {
-  const originalText = text?.originalText?.trim() || text?.original_text?.trim() || '';
-  const darijaText = text?.darijaText?.trim() || text?.darija_text?.trim() || '';
-  const title = text?.title?.trim() || 'هاد الوثيقة';
-  const sourceText = `${originalText} ${darijaText}`.trim();
 
-  if (!sourceText) {
-    return [];
-  }
-
-  const frConcepts = getConceptPool(originalText || sourceText, title);
-  const darijaConcepts = getConceptPool(darijaText || sourceText, title);
-  const allConcepts = getConceptPool(sourceText, title);
-
-  const frPreferredConcepts = getLocaleConcepts(getPreferredConcepts(frConcepts, allConcepts), 'fr', DEFAULT_CONCEPT_FALLBACKS.fr);
-  const enPreferredConcepts = ['main idea', 'key information', 'important detail', 'useful idea', 'related theme'];
-  const darijaPreferredConcepts = getLocaleConcepts(getPreferredConcepts(darijaConcepts, allConcepts), 'darija', DEFAULT_CONCEPT_FALLBACKS.darija);
-  const frSentences = (originalText || sourceText)
-    .split(/[.!?\n]+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 24);
-
-  const darijaSentences = (darijaText || sourceText)
-    .split(/[.!?؟\n]+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 12);
-
-  const firstFrAnswer = frPreferredConcepts[0] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
-  const secondFrAnswer = frPreferredConcepts[1] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
-  const thirdFrAnswer = frPreferredConcepts[2] || DEFAULT_CONCEPT_FALLBACKS.fr[1];
-  const fourthFrAnswer = frPreferredConcepts[3] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
-  const firstEnAnswer = enPreferredConcepts[0] || 'main idea';
-  const secondEnAnswer = enPreferredConcepts[1] || 'key information';
-  const thirdEnAnswer = enPreferredConcepts[2] || 'important detail';
-  const fourthEnAnswer = enPreferredConcepts[3] || 'useful idea';
-  const firstDarijaAnswer = darijaPreferredConcepts[0] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
-  const secondDarijaAnswer = darijaPreferredConcepts[1] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
-  const thirdDarijaAnswer = darijaPreferredConcepts[2] || DEFAULT_CONCEPT_FALLBACKS.darija[1];
-  const fourthDarijaAnswer = darijaPreferredConcepts[3] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
-
-  const introFrSnippet = frSentences[0]
-    ? `${frSentences[0].slice(0, 88)}${frSentences[0].length > 88 ? '...' : ''}`
-    : firstFrAnswer;
-  const introDarijaSnippet = darijaSentences[0]
-    ? `${darijaSentences[0].slice(0, 88)}${darijaSentences[0].length > 88 ? '...' : ''}`
-    : firstDarijaAnswer;
-
-  const frFallbacks = ['thème secondaire', 'information hors sujet'];
-  const enFallbacks = ['secondary theme', 'off-topic information'];
-  const darijaFallbacks = ['موضوع ثانوي', 'معلومة خارج السياق'];
-
-  return [
-    {
-      _id: `q_${text?._id || 'doc'}_1`,
-      questionTextFr: `De quoi parle principalement "${title}" ?`,
-      questionTextEn: `What is "${title}" mainly about?`,
-      questionTextDarija: `ما هو الموضوع الرئيسي في "${title}"؟`,
-      correctAnswerFr: firstFrAnswer,
-      correctAnswerEn: firstEnAnswer,
-      correctAnswerDarija: firstDarijaAnswer,
-      optionsFr: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, frFallbacks, { minWordCount: 2, locale: 'fr' }),
-      optionsEn: buildFallbackOptions(firstEnAnswer, enPreferredConcepts, enFallbacks, { minWordCount: 2, locale: 'en' }),
-      optionsDarija: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
-      correctAnswer: firstDarijaAnswer,
-      options: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
-      xpReward: 25,
-      engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
-    },
-    {
-      _id: `q_${text?._id || 'doc'}_2`,
-      questionTextFr: `Quel concept important est expliqué dans "${title}" ?`,
-      questionTextEn: `Which key concept is explained in "${title}"?`,
-      questionTextDarija: `شنو من مفهوم مهم متشرح فالنص "${title}"؟`,
-      correctAnswerFr: secondFrAnswer,
-      correctAnswerEn: secondEnAnswer,
-      correctAnswerDarija: secondDarijaAnswer,
-      optionsFr: buildFallbackOptions(secondFrAnswer, frPreferredConcepts.slice().reverse(), frFallbacks, { minWordCount: 2, locale: 'fr' }),
-      optionsEn: buildFallbackOptions(secondEnAnswer, enPreferredConcepts.slice().reverse(), enFallbacks, { minWordCount: 2, locale: 'en' }),
-      optionsDarija: buildFallbackOptions(secondDarijaAnswer, darijaPreferredConcepts.slice().reverse(), darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
-      correctAnswer: secondDarijaAnswer,
-      options: buildFallbackOptions(secondDarijaAnswer, darijaPreferredConcepts.slice().reverse(), darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
-      xpReward: 25,
-      engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
-    },
-    {
-      _id: `q_${text?._id || 'doc'}_3`,
-      questionTextFr: `Quelle reformulation respecte ce passage : "${introFrSnippet}" ?`,
-      questionTextEn: `Which rephrasing matches this passage: "${introFrSnippet}"?`,
-      questionTextDarija: `شنو الصياغة اللي كتبقى وفية لهاد المقطع: "${introDarijaSnippet}"؟`,
-      correctAnswerFr: thirdFrAnswer,
-      correctAnswerEn: thirdEnAnswer,
-      correctAnswerDarija: thirdDarijaAnswer,
-      optionsFr: buildFallbackOptions(thirdFrAnswer, frPreferredConcepts, frFallbacks, { minWordCount: 2, locale: 'fr' }),
-      optionsEn: buildFallbackOptions(thirdEnAnswer, enPreferredConcepts, enFallbacks, { minWordCount: 2, locale: 'en' }),
-      optionsDarija: buildFallbackOptions(thirdDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
-      correctAnswer: thirdDarijaAnswer,
-      options: buildFallbackOptions(thirdDarijaAnswer, darijaPreferredConcepts, darijaFallbacks, { minWordCount: 2, locale: 'darija' }),
-      xpReward: 30,
-      engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
-    },
-    {
-      _id: `q_${text?._id || 'doc'}_4`,
-      questionTextFr: `Pourquoi "${title}" est-il/elle utile à lire ?`,
-      questionTextEn: `Why is "${title}" useful to read?`,
-      questionTextDarija: `علاش قراية "${title}" مفيدة؟`,
-      correctAnswerFr: fourthFrAnswer,
-      correctAnswerEn: fourthEnAnswer,
-      correctAnswerDarija: fourthDarijaAnswer,
-      optionsFr: buildFallbackOptions(fourthFrAnswer, frPreferredConcepts, ['opinion sans lien', 'thème complètement différent'], { minWordCount: 2, locale: 'fr' }),
-      optionsEn: buildFallbackOptions(fourthEnAnswer, enPreferredConcepts, ['unrelated opinion', 'completely different theme'], { minWordCount: 2, locale: 'en' }),
-      optionsDarija: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['رأي بلا علاقة', 'موضوع مختلف بزاف'], { minWordCount: 2, locale: 'darija' }),
-      correctAnswer: fourthDarijaAnswer,
-      options: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['رأي بلا علاقة', 'موضوع مختلف بزاف'], { minWordCount: 2, locale: 'darija' }),
-      xpReward: 30,
-      engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
-    },
-    {
-      _id: `q_${text?._id || 'doc'}_5`,
-      questionTextFr: `Quelle affirmation correspond le mieux à "${title}" ?`,
-      questionTextEn: `Which statement best matches "${title}"?`,
-      questionTextDarija: `شنو الجملة اللي كتناسب "${title}" أكثر؟`,
-      correctAnswerFr: firstFrAnswer,
-      correctAnswerEn: firstEnAnswer,
-      correctAnswerDarija: firstDarijaAnswer,
-      optionsFr: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, ['idée inventée', 'information non mentionnée'], { minWordCount: 2, locale: 'fr' }),
-      optionsEn: buildFallbackOptions(firstEnAnswer, enPreferredConcepts, ['invented idea', 'not mentioned information'], { minWordCount: 2, locale: 'en' }),
-      optionsDarija: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['فكرة مخترعة', 'معلومة ما جا ذكرهاش'], { minWordCount: 2, locale: 'darija' }),
-      correctAnswer: firstDarijaAnswer,
-      options: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['فكرة مخترعة', 'معلومة ما جا ذكرهاش'], { minWordCount: 2, locale: 'darija' }),
-      xpReward: 35,
-      engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
-    },
-  ].slice(0, QUIZ_TARGET_COUNT);
-};
 
 const parseJsonArray = (value = '') => {
   const cleaned = value.replace(/```json|```/gi, '').trim();
@@ -550,47 +416,23 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
       .filter((option) => option && hasArabicScript(option)),
   );
 
-  const fallbackFr = ['information secondaire', 'idée sans lien'];
-  const fallbackEn = ['secondary information', 'off-topic idea'];
-  const fallbackDarija = ['معلومة ثانوية', 'فكرة بلا علاقة'];
+  if (normalizedOptions.length < 3 || normalizedOptionsDarija.length < 3) {
+    return null;
+  }
 
-  const baseFrOptions =
-    normalizedOptions.length >= 3
-      ? normalizedOptions.slice(0, 3)
-      : buildFallbackOptions(
-          String(rawQuestion?.correctAnswerFr || normalizedOptions[0] || rawQuestion?.correctAnswer || '').trim(),
-          normalizedOptions,
-          fallbackFr,
-          { minWordCount: 2, locale: 'fr' },
-        );
+  const baseFrOptions = normalizedOptions.slice(0, 3);
+  const baseDarijaOptions = normalizedOptionsDarija.slice(0, 3);
 
-  const baseDarijaOptions =
-    normalizedOptionsDarija.length >= 3
-      ? normalizedOptionsDarija.slice(0, 3)
-      : buildFallbackOptions(
-          String(rawQuestion?.correctAnswerDarija || normalizedOptionsDarija[0] || rawQuestion?.correctAnswer || '').trim(),
-          normalizedOptionsDarija,
-          fallbackDarija,
-          { minWordCount: 2, locale: 'darija' },
-        );
+  const rawEnOptions = dedupeCaseInsensitive(
+    (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
+      .map((option) => String(option || '').trim())
+      .filter((option) => option && !hasArabicScript(option)),
+  );
 
-  const baseEnOptions =
-    dedupeCaseInsensitive(
-      (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
-        .map((option) => String(option || '').trim())
-        .filter((option) => option && !hasArabicScript(option)),
-    ).slice(0, 3).length === 3
-      ? dedupeCaseInsensitive(
-          (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
-            .map((option) => String(option || '').trim())
-            .filter((option) => option && !hasArabicScript(option)),
-        ).slice(0, 3)
-      : buildFallbackOptions(
-          String(rawQuestion?.correctAnswerEn || baseFrOptions[0]).trim(),
-          baseFrOptions,
-          fallbackEn,
-          { minWordCount: 2, locale: 'en' },
-        );
+  if (rawEnOptions.length < 3) {
+    return null;
+  }
+  const baseEnOptions = rawEnOptions.slice(0, 3);
 
   const getCorrect = (options, directAnswer) => {
     const indexFromText = options.findIndex((option) => normalizeToken(option) === normalizeToken(directAnswer));
@@ -661,21 +503,22 @@ Each item must follow this schema:
 }
 
 IMPORTANT INSTRUCTIONS:
-- NEVER use phrases like "ce texte", "ce document", "this document", or "this text"
+- NEVER use generic phrases like "ce texte", "ce document", "this document", or "this text"
 - ALWAYS reference the document title "${title}" when asking questions
 - Example: "According to '${title}', what...", "In '${title}', which...", "What does '${title}' say about..."
 - Rephrase in French: "D'après '${title}'", "Dans '${title}'", "Selon '${title}'"
-- Rephrase in Darija: "حسب '${title}'", "فـ '${title}'"
+- Rephrase in Darija: "حسب '${title}'", "شنو كيقول '${title}' على..."
 
 Rules:
 - Exactly 3 options per language.
-- Questions must test comprehension, details, and inference from "${title}".
+- Questions MUST test actual facts and comprehension from "${title}". DO NOT ask generic questions like "Which sentence fits best?" or "What is the main idea?".
+- Options MUST be natural-sounding, grammatically correct phrases. DO NOT just paste raw bullet points, headings, or literal word-for-word translations.
+- For Darija: Use authentic, natural Moroccan Arabic. Do not use robotic or formal literal translations. The sentences must make sense when spoken.
 - Questions should be of medium difficulty: not too easy, and not too difficult. They must test genuine understanding.
 - Distractors must be plausible, relevant to the text content, but clearly wrong.
 - Do not generate options that are just re-ordered words from the same phrase.
-- Keep options concise but meaningful (at least 2 words).
 - correctIndex must point to the right option in each options array.
-- Make questions specific and highly relevant to the actual content of "${title}" - not generic.`;
+- Make questions specific and highly relevant to the actual factual content of "${title}".`;
 
   try {
     const response = await fetch(GEMINI_QUIZ_ENDPOINT, {
