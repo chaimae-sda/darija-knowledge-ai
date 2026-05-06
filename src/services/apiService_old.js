@@ -1,4 +1,4 @@
-import { aiService } from './aiService';
+﻿import { aiService } from './aiService';
 import { ocrService } from './ocrService';
 
 const SUPABASE_URL =
@@ -65,20 +65,20 @@ const FR_STOPWORDS = new Set([
   'elle',
   'elles',
   'entre',
-  'être',
+  '├¬tre',
   'fait',
   'font',
   'leur',
   'leurs',
   'mais',
-  'même',
+  'm├¬me',
   'nous',
   'notre',
   'pour',
   'plus',
   'sans',
   'sont',
-  'très',
+  'tr├¿s',
   'tout',
   'tous',
   'une',
@@ -92,29 +92,29 @@ const FR_STOPWORDS = new Set([
 ]);
 
 const DARIJA_STOPWORDS = new Set([
-  'هذا',
-  'هاد',
-  'هادا',
-  'هادي',
-  'هادو',
-  'ديال',
-  'على',
-  'في',
-  'فهاد',
-  'باش',
-  'واش',
-  'شنو',
-  'كيفاش',
-  'فين',
-  'مهم',
-  'بزاف',
-  'النص',
-  'الوثيقة',
+  '┘çÏ░Ïº',
+  '┘çÏºÏ»',
+  '┘çÏºÏ»Ïº',
+  '┘çÏºÏ»┘è',
+  '┘çÏºÏ»┘ê',
+  'Ï»┘èÏº┘ä',
+  'Ï╣┘ä┘ë',
+  '┘ü┘è',
+  '┘ü┘çÏºÏ»',
+  'Ï¿ÏºÏ┤',
+  '┘êÏºÏ┤',
+  'Ï┤┘å┘ê',
+  '┘â┘è┘üÏºÏ┤',
+  '┘ü┘è┘å',
+  '┘à┘ç┘à',
+  'Ï¿Ï▓Ïº┘ü',
+  'Ïº┘ä┘åÏÁ',
+  'Ïº┘ä┘êÏ½┘è┘éÏ®',
 ]);
 
 const DEFAULT_CONCEPT_FALLBACKS = {
-  fr: ['idée principale', 'information essentielle'],
-  darija: ['فكرة أساسية', 'معلومة مهمة'],
+  fr: ['id├®e principale', 'information essentielle'],
+  darija: ['┘ü┘âÏ▒Ï® ÏúÏ│ÏºÏ│┘èÏ®', '┘àÏ╣┘ä┘ê┘àÏ® ┘à┘ç┘àÏ®'],
 };
 
 const MIN_PHRASE_LENGTH = 6;
@@ -127,10 +127,11 @@ const MAX_SINGLE_WORD_OPTIONS = 1;
 const QUIZ_TARGET_COUNT = 5;
 const QUIZ_ENGINE_VERSION = 'smart-ai-v1';
 const QUIZ_FALLBACK_ENGINE_VERSION = 'smart-fallback-v2';
-const MAX_AI_SOURCE_LENGTH = 4000; // Drastically reduced for blazing fast quiz generation (first page is enough for 5 questions)
-const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || '';
-const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
-const MISTRAL_MODEL = 'mistral-small-latest';
+const MAX_AI_SOURCE_LENGTH = 3600;
+const GEMINI_QUIZ_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || '';
+const GEMINI_QUIZ_ENDPOINT = GEMINI_QUIZ_API_KEY
+  ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_QUIZ_API_KEY}`
+  : '';
 
 const normalizeToken = (token = '') =>
   token
@@ -171,7 +172,7 @@ const getKeywordPool = (text = '') => {
   const frequency = new Map();
 
   text
-    .replace(/[.,!?;:()[\]{}"'`’”“]/g, ' ')
+    .replace(/[.,!?;:()[\]{}"'`ÔÇÖÔÇØÔÇ£]/g, ' ')
     .split(/\s+/)
     .map((word) => word.trim())
     .filter(isMeaningfulToken)
@@ -187,7 +188,7 @@ const getKeywordPool = (text = '') => {
 
 const getConceptPool = (text = '', title = '') => {
   const clauses = text
-    .split(/[.!?؟\n,;:()]+/)
+    .split(/[.!?Ïƒ\n,;:()]+/)
     .map((chunk) => chunk.trim())
     .filter((chunk) => {
       const words = chunk.split(/\s+/).filter(Boolean);
@@ -282,29 +283,29 @@ const getLocaleConcepts = (concepts = [], locale, fallbackConcepts = []) => {
 
 const getBackupLabelsByLocale = (localeHint = '') => {
   if (/[\u0600-\u06FF]/u.test(localeHint)) {
-    return ['معلومة مرتبطة بالنص', 'تفصيل مهم', 'موضوع قريب'];
+    return ['┘àÏ╣┘ä┘ê┘àÏ® ┘àÏ▒Ï¬Ï¿ÏÀÏ® Ï¿Ïº┘ä┘åÏÁ', 'Ï¬┘üÏÁ┘è┘ä ┘à┘ç┘à', '┘à┘êÏÂ┘êÏ╣ ┘éÏ▒┘èÏ¿'];
   }
 
   if (/\b(off-topic|secondary|information)\b/i.test(localeHint)) {
     return ['related detail', 'secondary idea', 'connected topic'];
   }
 
-  return ['idée secondaire', 'information complémentaire', 'sujet connexe'];
+  return ['id├®e secondaire', 'information compl├®mentaire', 'sujet connexe'];
 };
 
 const buildFallbackOptions = (
   answer,
   keywords = [],
-  fallbacks = ['معلومة عامة', 'تفصيل ثانوي'],
+  fallbacks = ['┘àÏ╣┘ä┘ê┘àÏ® Ï╣Ïº┘àÏ®', 'Ï¬┘üÏÁ┘è┘ä Ï½Ïº┘å┘ê┘è'],
   { minWordCount = 1, locale = 'fr' } = {},
 ) => {
   const normalizedAnswer = normalizeToken(answer);
   const localeFallbacks =
     locale === 'darija'
-      ? ['موضوع آخر', 'معلومة عامة', 'تفصيل إضافي']
+      ? ['┘à┘êÏÂ┘êÏ╣ ÏóÏ«Ï▒', '┘àÏ╣┘ä┘ê┘àÏ® Ï╣Ïº┘àÏ®', 'Ï¬┘üÏÁ┘è┘ä ÏÑÏÂÏº┘ü┘è']
       : locale === 'en'
         ? ['another topic', 'general information', 'additional detail']
-        : ['autre sujet', 'information générale', 'détail complémentaire'];
+        : ['autre sujet', 'information g├®n├®rale', 'd├®tail compl├®mentaire'];
   const localeMatches = (item) => (locale === 'darija' ? hasArabicScript(item) : !hasArabicScript(item));
   const candidates = dedupeCaseInsensitive([
     ...keywords.filter((item) => item && normalizeToken(item) !== normalizedAnswer && localeMatches(item)),
@@ -378,13 +379,19 @@ const generateBestQuestionsForText = async (text) => {
     return aiQuestions;
   }
 
-  return generateQuestionsFromText(text);
+  // Return empty array instead of keyword-based mock generation
+  return [];
 };
 
 const generateQuestionsFromText = (text) => {
+  return [];
+};
+
+// Ignore the rest of generateQuestionsFromText, but I don't need to delete it.
+const dummyGenerateQuestionsFromText = (text) => {
   const originalText = text?.originalText?.trim() || text?.original_text?.trim() || '';
   const darijaText = text?.darijaText?.trim() || text?.darija_text?.trim() || '';
-  const title = text?.title?.trim() || 'هاد الوثيقة';
+  const title = text?.title?.trim() || '┘çÏºÏ» Ïº┘ä┘êÏ½┘è┘éÏ®';
   const sourceText = `${originalText} ${darijaText}`.trim();
 
   if (!sourceText) {
@@ -404,7 +411,7 @@ const generateQuestionsFromText = (text) => {
     .filter((s) => s.length > 24);
 
   const darijaSentences = (darijaText || sourceText)
-    .split(/[.!?؟\n]+/)
+    .split(/[.!?Ïƒ\n]+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 12);
 
@@ -428,16 +435,16 @@ const generateQuestionsFromText = (text) => {
     ? `${darijaSentences[0].slice(0, 88)}${darijaSentences[0].length > 88 ? '...' : ''}`
     : firstDarijaAnswer;
 
-  const frFallbacks = ['thème secondaire', 'information hors sujet'];
+  const frFallbacks = ['th├¿me secondaire', 'information hors sujet'];
   const enFallbacks = ['secondary theme', 'off-topic information'];
-  const darijaFallbacks = ['موضوع ثانوي', 'معلومة خارج السياق'];
+  const darijaFallbacks = ['┘à┘êÏÂ┘êÏ╣ Ï½Ïº┘å┘ê┘è', '┘àÏ╣┘ä┘ê┘àÏ® Ï«ÏºÏ▒Ï¼ Ïº┘äÏ│┘èÏº┘é'];
 
   return [
     {
       _id: `q_${text?._id || 'doc'}_1`,
       questionTextFr: `De quoi parle principalement "${title}" ?`,
       questionTextEn: `What is "${title}" mainly about?`,
-      questionTextDarija: `ما هو الموضوع الرئيسي في "${title}"؟`,
+      questionTextDarija: `┘àÏº ┘ç┘ê Ïº┘ä┘à┘êÏÂ┘êÏ╣ Ïº┘äÏ▒Ïª┘èÏ│┘è ┘ü┘è "${title}"Ïƒ`,
       correctAnswerFr: firstFrAnswer,
       correctAnswerEn: firstEnAnswer,
       correctAnswerDarija: firstDarijaAnswer,
@@ -451,9 +458,9 @@ const generateQuestionsFromText = (text) => {
     },
     {
       _id: `q_${text?._id || 'doc'}_2`,
-      questionTextFr: `Quel concept important est expliqué dans "${title}" ?`,
+      questionTextFr: `Quel concept important est expliqu├® dans "${title}" ?`,
       questionTextEn: `Which key concept is explained in "${title}"?`,
-      questionTextDarija: `شنو من مفهوم مهم متشرح فالنص "${title}"؟`,
+      questionTextDarija: `Ï┤┘å┘ê ┘à┘å ┘à┘ü┘ç┘ê┘à ┘à┘ç┘à ┘àÏ¬Ï┤Ï▒Ï¡ ┘üÏº┘ä┘åÏÁ "${title}"Ïƒ`,
       correctAnswerFr: secondFrAnswer,
       correctAnswerEn: secondEnAnswer,
       correctAnswerDarija: secondDarijaAnswer,
@@ -469,7 +476,7 @@ const generateQuestionsFromText = (text) => {
       _id: `q_${text?._id || 'doc'}_3`,
       questionTextFr: `Quelle reformulation respecte ce passage : "${introFrSnippet}" ?`,
       questionTextEn: `Which rephrasing matches this passage: "${introFrSnippet}"?`,
-      questionTextDarija: `شنو الصياغة اللي كتبقى وفية لهاد المقطع: "${introDarijaSnippet}"؟`,
+      questionTextDarija: `Ï┤┘å┘ê Ïº┘äÏÁ┘èÏºÏ║Ï® Ïº┘ä┘ä┘è ┘âÏ¬Ï¿┘é┘ë ┘ê┘ü┘èÏ® ┘ä┘çÏºÏ» Ïº┘ä┘à┘éÏÀÏ╣: "${introDarijaSnippet}"Ïƒ`,
       correctAnswerFr: thirdFrAnswer,
       correctAnswerEn: thirdEnAnswer,
       correctAnswerDarija: thirdDarijaAnswer,
@@ -483,33 +490,33 @@ const generateQuestionsFromText = (text) => {
     },
     {
       _id: `q_${text?._id || 'doc'}_4`,
-      questionTextFr: `Pourquoi "${title}" est-il/elle utile à lire ?`,
+      questionTextFr: `Pourquoi "${title}" est-il/elle utile ├á lire ?`,
       questionTextEn: `Why is "${title}" useful to read?`,
-      questionTextDarija: `علاش قراية "${title}" مفيدة؟`,
+      questionTextDarija: `Ï╣┘äÏºÏ┤ ┘éÏ▒Ïº┘èÏ® "${title}" ┘à┘ü┘èÏ»Ï®Ïƒ`,
       correctAnswerFr: fourthFrAnswer,
       correctAnswerEn: fourthEnAnswer,
       correctAnswerDarija: fourthDarijaAnswer,
-      optionsFr: buildFallbackOptions(fourthFrAnswer, frPreferredConcepts, ['opinion sans lien', 'thème complètement différent'], { minWordCount: 2, locale: 'fr' }),
+      optionsFr: buildFallbackOptions(fourthFrAnswer, frPreferredConcepts, ['opinion sans lien', 'th├¿me compl├¿tement diff├®rent'], { minWordCount: 2, locale: 'fr' }),
       optionsEn: buildFallbackOptions(fourthEnAnswer, enPreferredConcepts, ['unrelated opinion', 'completely different theme'], { minWordCount: 2, locale: 'en' }),
-      optionsDarija: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['رأي بلا علاقة', 'موضوع مختلف بزاف'], { minWordCount: 2, locale: 'darija' }),
+      optionsDarija: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['Ï▒Ïú┘è Ï¿┘äÏº Ï╣┘äÏº┘éÏ®', '┘à┘êÏÂ┘êÏ╣ ┘àÏ«Ï¬┘ä┘ü Ï¿Ï▓Ïº┘ü'], { minWordCount: 2, locale: 'darija' }),
       correctAnswer: fourthDarijaAnswer,
-      options: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['رأي بلا علاقة', 'موضوع مختلف بزاف'], { minWordCount: 2, locale: 'darija' }),
+      options: buildFallbackOptions(fourthDarijaAnswer, darijaPreferredConcepts, ['Ï▒Ïú┘è Ï¿┘äÏº Ï╣┘äÏº┘éÏ®', '┘à┘êÏÂ┘êÏ╣ ┘àÏ«Ï¬┘ä┘ü Ï¿Ï▓Ïº┘ü'], { minWordCount: 2, locale: 'darija' }),
       xpReward: 30,
       engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
     },
     {
       _id: `q_${text?._id || 'doc'}_5`,
-      questionTextFr: `Quelle affirmation correspond le mieux à "${title}" ?`,
+      questionTextFr: `Quelle affirmation correspond le mieux ├á "${title}" ?`,
       questionTextEn: `Which statement best matches "${title}"?`,
-      questionTextDarija: `شنو الجملة اللي كتناسب "${title}" أكثر؟`,
+      questionTextDarija: `Ï┤┘å┘ê Ïº┘äÏ¼┘à┘äÏ® Ïº┘ä┘ä┘è ┘âÏ¬┘åÏºÏ│Ï¿ "${title}" Ïú┘âÏ½Ï▒Ïƒ`,
       correctAnswerFr: firstFrAnswer,
       correctAnswerEn: firstEnAnswer,
       correctAnswerDarija: firstDarijaAnswer,
-      optionsFr: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, ['idée inventée', 'information non mentionnée'], { minWordCount: 2, locale: 'fr' }),
+      optionsFr: buildFallbackOptions(firstFrAnswer, frPreferredConcepts, ['id├®e invent├®e', 'information non mentionn├®e'], { minWordCount: 2, locale: 'fr' }),
       optionsEn: buildFallbackOptions(firstEnAnswer, enPreferredConcepts, ['invented idea', 'not mentioned information'], { minWordCount: 2, locale: 'en' }),
-      optionsDarija: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['فكرة مخترعة', 'معلومة ما جا ذكرهاش'], { minWordCount: 2, locale: 'darija' }),
+      optionsDarija: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['┘ü┘âÏ▒Ï® ┘àÏ«Ï¬Ï▒Ï╣Ï®', '┘àÏ╣┘ä┘ê┘àÏ® ┘àÏº Ï¼Ïº Ï░┘âÏ▒┘çÏºÏ┤'], { minWordCount: 2, locale: 'darija' }),
       correctAnswer: firstDarijaAnswer,
-      options: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['فكرة مخترعة', 'معلومة ما جا ذكرهاش'], { minWordCount: 2, locale: 'darija' }),
+      options: buildFallbackOptions(firstDarijaAnswer, darijaPreferredConcepts, ['┘ü┘âÏ▒Ï® ┘àÏ«Ï¬Ï▒Ï╣Ï®', '┘àÏ╣┘ä┘ê┘àÏ® ┘àÏº Ï¼Ïº Ï░┘âÏ▒┘çÏºÏ┤'], { minWordCount: 2, locale: 'darija' }),
       xpReward: 35,
       engineVersion: QUIZ_FALLBACK_ENGINE_VERSION,
     },
@@ -543,23 +550,47 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
       .filter((option) => option && hasArabicScript(option)),
   );
 
-  if (normalizedOptions.length < 3 || normalizedOptionsDarija.length < 3) {
-    return null;
-  }
+  const fallbackFr = ['information secondaire', 'id├®e sans lien'];
+  const fallbackEn = ['secondary information', 'off-topic idea'];
+  const fallbackDarija = ['┘àÏ╣┘ä┘ê┘àÏ® Ï½Ïº┘å┘ê┘èÏ®', '┘ü┘âÏ▒Ï® Ï¿┘äÏº Ï╣┘äÏº┘éÏ®'];
 
-  const baseFrOptions = normalizedOptions.slice(0, 3);
-  const baseDarijaOptions = normalizedOptionsDarija.slice(0, 3);
+  const baseFrOptions =
+    normalizedOptions.length >= 3
+      ? normalizedOptions.slice(0, 3)
+      : buildFallbackOptions(
+          String(rawQuestion?.correctAnswerFr || normalizedOptions[0] || rawQuestion?.correctAnswer || '').trim(),
+          normalizedOptions,
+          fallbackFr,
+          { minWordCount: 2, locale: 'fr' },
+        );
 
-  const rawEnOptions = dedupeCaseInsensitive(
-    (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
-      .map((option) => String(option || '').trim())
-      .filter((option) => option && !hasArabicScript(option)),
-  );
+  const baseDarijaOptions =
+    normalizedOptionsDarija.length >= 3
+      ? normalizedOptionsDarija.slice(0, 3)
+      : buildFallbackOptions(
+          String(rawQuestion?.correctAnswerDarija || normalizedOptionsDarija[0] || rawQuestion?.correctAnswer || '').trim(),
+          normalizedOptionsDarija,
+          fallbackDarija,
+          { minWordCount: 2, locale: 'darija' },
+        );
 
-  if (rawEnOptions.length < 3) {
-    return null;
-  }
-  const baseEnOptions = rawEnOptions.slice(0, 3);
+  const baseEnOptions =
+    dedupeCaseInsensitive(
+      (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
+        .map((option) => String(option || '').trim())
+        .filter((option) => option && !hasArabicScript(option)),
+    ).slice(0, 3).length === 3
+      ? dedupeCaseInsensitive(
+          (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
+            .map((option) => String(option || '').trim())
+            .filter((option) => option && !hasArabicScript(option)),
+        ).slice(0, 3)
+      : buildFallbackOptions(
+          String(rawQuestion?.correctAnswerEn || baseFrOptions[0]).trim(),
+          baseFrOptions,
+          fallbackEn,
+          { minWordCount: 2, locale: 'en' },
+        );
 
   const getCorrect = (options, directAnswer) => {
     const indexFromText = options.findIndex((option) => normalizeToken(option) === normalizeToken(directAnswer));
@@ -596,7 +627,7 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
 };
 
 const generateQuestionsWithAI = async (text) => {
-  if (!MISTRAL_API_KEY) {
+  if (!GEMINI_QUIZ_ENDPOINT) {
     return null;
   }
 
@@ -630,40 +661,34 @@ Each item must follow this schema:
 }
 
 IMPORTANT INSTRUCTIONS:
-- NEVER use generic phrases like "ce texte", "ce document", "this document", or "this text"
+- NEVER use phrases like "ce texte", "ce document", "this document", or "this text"
 - ALWAYS reference the document title "${title}" when asking questions
 - Example: "According to '${title}', what...", "In '${title}', which...", "What does '${title}' say about..."
-- Rephrase in French: "D'après '${title}'", "Dans '${title}'", "Selon '${title}'"
-- Rephrase in Darija: "حسب '${title}'", "شنو كيقول '${title}' على..."
+- Rephrase in French: "D'apr├¿s '${title}'", "Dans '${title}'", "Selon '${title}'"
+- Rephrase in Darija: "Ï¡Ï│Ï¿ '${title}'", "┘ü┘Ç '${title}'"
 
 Rules:
 - Exactly 3 options per language.
-- Questions MUST test actual facts and comprehension from "${title}". DO NOT ask generic questions like "Which sentence fits best?" or "What is the main idea?".
-- Options MUST be natural-sounding, grammatically correct phrases. DO NOT just paste raw bullet points, headings, or literal word-for-word translations.
-- For Darija: Use authentic, natural Moroccan Arabic. Do not use robotic or formal literal translations. The sentences must make sense when spoken.
+- Questions must test comprehension, details, and inference from "${title}".
 - Questions should be of medium difficulty: not too easy, and not too difficult. They must test genuine understanding.
 - Distractors must be plausible, relevant to the text content, but clearly wrong.
 - Do not generate options that are just re-ordered words from the same phrase.
+- Keep options concise but meaningful (at least 2 words).
 - correctIndex must point to the right option in each options array.
-- Make questions specific and highly relevant to the actual factual content of "${title}".`;
+- Make questions specific and highly relevant to the actual content of "${title}" - not generic.`;
 
   try {
-    const response = await fetch(MISTRAL_API_URL, {
+    const response = await fetch(GEMINI_QUIZ_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${MISTRAL_API_KEY}`,
       },
       body: JSON.stringify({
-        model: MISTRAL_MODEL,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.35,
-        top_p: 0.9,
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.35,
+          topP: 0.9,
+        },
       }),
     });
 
@@ -672,7 +697,7 @@ Rules:
     }
 
     const payload = await response.json();
-    const responseText = payload?.choices?.[0]?.message?.content;
+    const responseText = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!responseText) {
       return null;
     }
@@ -800,7 +825,7 @@ const needsQuestionRefresh = (questions = []) =>
 
 const ensureHighQualityQuestions = (text, existingQuestions = []) => {
   const hasOldEngine = existingQuestions.some(
-    (q) => q?.engineVersion !== QUIZ_ENGINE_VERSION && q?.engineVersion !== QUIZ_FALLBACK_ENGINE_VERSION
+    (q) => q?.engineVersion !== QUIZ_ENGINE_VERSION
   );
   if (!Array.isArray(existingQuestions) || existingQuestions.length === 0 || isLowQualityGeneratedQuiz(existingQuestions) || hasOldEngine) {
     return [];
@@ -810,17 +835,12 @@ const ensureHighQualityQuestions = (text, existingQuestions = []) => {
 };
 
 const generateSmartQuestionsForText = async (text, existingQuestions = []) => {
-  const validExisting = ensureHighQualityQuestions(text, existingQuestions);
-  if (validExisting.length > 0) {
-    return validExisting;
-  }
-
   const aiQuestions = await generateQuestionsWithAI(text);
   if (Array.isArray(aiQuestions) && aiQuestions.length > 0 && !isLowQualityGeneratedQuiz(aiQuestions)) {
     return aiQuestions;
   }
 
-  return generateQuestionsFromText(text);
+  return ensureHighQualityQuestions(text, existingQuestions);
 };
 
 const buildDefaultQuiz = () => [
@@ -828,45 +848,45 @@ const buildDefaultQuiz = () => [
     _id: 'q1',
     questionTextFr: "Que fait l'intelligence artificielle selon le texte?",
     questionTextEn: 'What does artificial intelligence do according to the text?',
-    questionTextDarija: 'الذكاء الاصطناعي كيعاون على شنو؟',
-    correctAnswerFr: "Analyser des données",
+    questionTextDarija: 'Ïº┘äÏ░┘âÏºÏí Ïº┘äÏºÏÁÏÀ┘åÏºÏ╣┘è ┘â┘èÏ╣Ïº┘ê┘å Ï╣┘ä┘ë Ï┤┘å┘êÏƒ',
+    correctAnswerFr: "Analyser des donn├®es",
     correctAnswerEn: 'Analyse data',
-    correctAnswerDarija: 'تحليل البيانات',
-    optionsFr: ["Analyser des données", "Jouer à l'école", "Dormir beaucoup"],
+    correctAnswerDarija: 'Ï¬Ï¡┘ä┘è┘ä Ïº┘äÏ¿┘èÏº┘åÏºÏ¬',
+    optionsFr: ["Analyser des donn├®es", "Jouer ├á l'├®cole", "Dormir beaucoup"],
     optionsEn: ['Analyse data', 'Play at school', 'Sleep a lot'],
-    optionsDarija: ['تحليل البيانات', 'اللعب فالمدرسة', 'النوم الكثير'],
-    correctAnswer: 'تحليل البيانات',
-    options: ['تحليل البيانات', 'اللعب فالمدرسة', 'النوم الكثير'],
+    optionsDarija: ['Ï¬Ï¡┘ä┘è┘ä Ïº┘äÏ¿┘èÏº┘åÏºÏ¬', 'Ïº┘ä┘äÏ╣Ï¿ ┘üÏº┘ä┘àÏ»Ï▒Ï│Ï®', 'Ïº┘ä┘å┘ê┘à Ïº┘ä┘âÏ½┘èÏ▒'],
+    correctAnswer: 'Ï¬Ï¡┘ä┘è┘ä Ïº┘äÏ¿┘èÏº┘åÏºÏ¬',
+    options: ['Ï¬Ï¡┘ä┘è┘ä Ïº┘äÏ¿┘èÏº┘åÏºÏ¬', 'Ïº┘ä┘äÏ╣Ï¿ ┘üÏº┘ä┘àÏ»Ï▒Ï│Ï®', 'Ïº┘ä┘å┘ê┘à Ïº┘ä┘âÏ½┘èÏ▒'],
     xpReward: 20,
   },
   {
     _id: 'q2',
-    questionTextFr: "Quel est le résultat de l'utilisation de l'IA?",
+    questionTextFr: "Quel est le r├®sultat de l'utilisation de l'IA?",
     questionTextEn: 'What is the result of using AI?',
-    questionTextDarija: 'شنو النتيجة ديال استعمال الذكاء الاصطناعي؟',
-    correctAnswerFr: 'De meilleures décisions',
+    questionTextDarija: 'Ï┤┘å┘ê Ïº┘ä┘åÏ¬┘èÏ¼Ï® Ï»┘èÏº┘ä ÏºÏ│Ï¬Ï╣┘àÏº┘ä Ïº┘äÏ░┘âÏºÏí Ïº┘äÏºÏÁÏÀ┘åÏºÏ╣┘èÏƒ',
+    correctAnswerFr: 'De meilleures d├®cisions',
     correctAnswerEn: 'Better decisions',
-    correctAnswerDarija: 'قرارات احسن',
-    optionsFr: ['Perte de temps', 'De meilleures décisions', 'Oublier les cours'],
+    correctAnswerDarija: '┘éÏ▒ÏºÏ▒ÏºÏ¬ ÏºÏ¡Ï│┘å',
+    optionsFr: ['Perte de temps', 'De meilleures d├®cisions', 'Oublier les cours'],
     optionsEn: ['Waste of time', 'Better decisions', 'Forgetting lessons'],
-    optionsDarija: ['ضياع الوقت', 'قرارات احسن', 'نسيان الدروس'],
-    correctAnswer: 'قرارات احسن',
-    options: ['ضياع الوقت', 'قرارات احسن', 'نسيان الدروس'],
+    optionsDarija: ['ÏÂ┘èÏºÏ╣ Ïº┘ä┘ê┘éÏ¬', '┘éÏ▒ÏºÏ▒ÏºÏ¬ ÏºÏ¡Ï│┘å', '┘åÏ│┘èÏº┘å Ïº┘äÏ»Ï▒┘êÏ│'],
+    correctAnswer: '┘éÏ▒ÏºÏ▒ÏºÏ¬ ÏºÏ¡Ï│┘å',
+    options: ['ÏÂ┘èÏºÏ╣ Ïº┘ä┘ê┘éÏ¬', '┘éÏ▒ÏºÏ▒ÏºÏ¬ ÏºÏ¡Ï│┘å', '┘åÏ│┘èÏº┘å Ïº┘äÏ»Ï▒┘êÏ│'],
     xpReward: 20,
   },
   {
     _id: 'q3',
     questionTextFr: 'Cet article est-il utile pour apprendre?',
     questionTextEn: 'Is this article useful for learning?',
-    questionTextDarija: 'واش هاد الموضوع مفيد للتعلم؟',
+    questionTextDarija: '┘êÏºÏ┤ ┘çÏºÏ» Ïº┘ä┘à┘êÏÂ┘êÏ╣ ┘à┘ü┘èÏ» ┘ä┘äÏ¬Ï╣┘ä┘àÏƒ',
     correctAnswerFr: 'Oui, il contient des informations',
     correctAnswerEn: 'Yes, it contains information',
-    correctAnswerDarija: 'نعم، فيه معلومات',
+    correctAnswerDarija: '┘åÏ╣┘àÏî ┘ü┘è┘ç ┘àÏ╣┘ä┘ê┘àÏºÏ¬',
     optionsFr: ['Non, juste du divertissement', 'Oui, il contient des informations', 'Je ne sais pas'],
     optionsEn: ["No, it's just entertainment", 'Yes, it contains information', "I don't know"],
-    optionsDarija: ['لا، غير تفلية', 'نعم، فيه معلومات', 'ما عرفتش'],
-    correctAnswer: 'نعم، فيه معلومات',
-    options: ['لا، غير تفلية', 'نعم، فيه معلومات', 'ما عرفتش'],
+    optionsDarija: ['┘äÏºÏî Ï║┘èÏ▒ Ï¬┘ü┘ä┘èÏ®', '┘åÏ╣┘àÏî ┘ü┘è┘ç ┘àÏ╣┘ä┘ê┘àÏºÏ¬', '┘àÏº Ï╣Ï▒┘üÏ¬Ï┤'],
+    correctAnswer: '┘åÏ╣┘àÏî ┘ü┘è┘ç ┘àÏ╣┘ä┘ê┘àÏºÏ¬',
+    options: ['┘äÏºÏî Ï║┘èÏ▒ Ï¬┘ü┘ä┘èÏ®', '┘åÏ╣┘àÏî ┘ü┘è┘ç ┘àÏ╣┘ä┘ê┘àÏºÏ¬', '┘àÏº Ï╣Ï▒┘üÏ¬Ï┤'],
     xpReward: 30,
   },
 ];
@@ -898,7 +918,7 @@ const normalizeUser = (user) => {
     id: user.id || user._id,
     username: user.username || user.user_metadata?.username || user.email?.split('@')[0] || 'Learner',
     email: user.email,
-    avatar: user.avatar || '👧',
+    avatar: user.avatar || '­ƒæº',
     avatarImage: user.avatarImage || user.avatar_image || '',
     level,
     levelName: user.levelName || user.level_name || getLevelName(level),
@@ -1026,7 +1046,7 @@ const buildProfilePayload = (user) => ({
   id: user.id,
   email: user.email,
   username: user.username,
-  avatar: user.avatar || '👧',
+  avatar: user.avatar || '­ƒæº',
   avatar_image: user.avatarImage || '',
   level: user.level,
   level_name: user.levelName,
@@ -1051,7 +1071,7 @@ const normalizeProfileRecord = (profile, authUser = null) =>
     id: profile?.id || authUser?.id,
     username: profile?.username || authUser?.user_metadata?.username || authUser?.email?.split('@')[0],
     email: profile?.email || authUser?.email,
-    avatar: profile?.avatar || '👧',
+    avatar: profile?.avatar || '­ƒæº',
     avatarImage: profile?.avatar_image || '',
     level: profile?.level || getLevelFromXp(profile?.xp || 0),
     levelName: profile?.level_name || getLevelName(profile?.level || getLevelFromXp(profile?.xp || 0)),
@@ -1376,7 +1396,7 @@ const mockHandlers = {
       source,
       fileName,
       mimeType,
-      generatedQuestions: [], // Quiz is generated on-demand when they open the Games module
+      generatedQuestions: await generateBestQuestionsForText({ title, originalText, darijaText }),
       readCount: 0,
       isFavorite: false,
       createdAt: new Date().toISOString(),
@@ -1531,7 +1551,7 @@ const mockHandlers = {
     const result = await mockHandlers.addXP(50);
     return {
       isCorrect: true,
-      correctAnswer: 'تحليل البيانات',
+      correctAnswer: 'Ï¬Ï¡┘ä┘è┘ä Ïº┘äÏ¿┘èÏº┘åÏºÏ¬',
       xpEarned: 50,
       totalXp: result.xp || 0,
       level: result.level || 1,
@@ -1571,13 +1591,13 @@ const mockHandlers = {
   },
 
   translateText: async ({ text }) => ({
-    translated: `ترجمة مبسطة: ${text}`,
+    translated: `Ï¬Ï▒Ï¼┘àÏ® ┘àÏ¿Ï│ÏÀÏ®: ${text}`,
   }),
 
   performOCR: async () => ({
     title: 'Document Scanne',
     originalText: "L'intelligence artificielle transforme notre facon d'apprendre et de comprendre le monde.",
-    darijaText: 'الذكاء الاصطناعي كيبدل الطريقة باش كنتعلمو وكنفهمو العالم.',
+    darijaText: 'Ïº┘äÏ░┘âÏºÏí Ïº┘äÏºÏÁÏÀ┘åÏºÏ╣┘è ┘â┘èÏ¿Ï»┘ä Ïº┘äÏÀÏ▒┘è┘éÏ® Ï¿ÏºÏ┤ ┘â┘åÏ¬Ï╣┘ä┘à┘ê ┘ê┘â┘å┘ü┘ç┘à┘ê Ïº┘äÏ╣Ïº┘ä┘à.',
   }),
 };
 
