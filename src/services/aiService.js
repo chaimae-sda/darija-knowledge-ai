@@ -63,49 +63,46 @@ const refineToDarija = (text) => {
   return refined;
 };
 
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
+const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
+const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 
 export const aiService = {
   translate: async (text) => {
     if (!text || text.trim().length === 0) return '';
 
-    // If Gemini key is available, use it for genuine authentic Darija translation
-    if (GOOGLE_API_KEY) {
+    // If Mistral key is available, use it for genuine authentic Darija translation
+    if (MISTRAL_API_KEY) {
       try {
-        const response = await fetch(GEMINI_URL, {
+        const response = await fetch(MISTRAL_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${MISTRAL_API_KEY}`,
           },
           body: JSON.stringify({
-            contents: [
+            model: 'mistral-small-latest',
+            messages: [
               {
-                parts: [
-                  {
-                    text: `Traduisez le texte français suivant en dialecte marocain authentique (Darija) écrit en caractères arabes. Ne fournissez QUE la traduction, sans guillemets, sans commentaires et sans texte supplémentaire:\n\n${text}`,
-                  },
-                ],
+                role: 'user',
+                content: `Traduisez le texte français suivant en dialecte marocain authentique (Darija) écrit en caractères arabes. Ne fournissez QUE la traduction, sans guillemets, sans commentaires et sans texte supplémentaire:\n\n${text}`,
               },
             ],
-            generationConfig: {
-              temperature: 0.3,
-            },
+            temperature: 0.3,
           }),
         });
 
         if (!response.ok) {
-          throw new Error('Gemini API Error');
+          throw new Error('Mistral API Error');
         }
 
         const data = await response.json();
-        const translatedContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const translatedContent = data.choices?.[0]?.message?.content;
         
         if (translatedContent) {
           return translatedContent.trim();
         }
       } catch (error) {
-        console.error('Gemini translation failed, falling back to MyMemory:', error);
+        console.error('Mistral translation failed, falling back to MyMemory:', error);
       }
     }
 

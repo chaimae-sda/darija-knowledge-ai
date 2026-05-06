@@ -127,11 +127,10 @@ const MAX_SINGLE_WORD_OPTIONS = 1;
 const QUIZ_TARGET_COUNT = 5;
 const QUIZ_ENGINE_VERSION = 'smart-ai-v1';
 const QUIZ_FALLBACK_ENGINE_VERSION = 'smart-fallback-v2';
-const MAX_AI_SOURCE_LENGTH = 100000;
-const GEMINI_QUIZ_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || '';
-const GEMINI_QUIZ_ENDPOINT = GEMINI_QUIZ_API_KEY
-  ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_QUIZ_API_KEY}`
-  : '';
+const MAX_AI_SOURCE_LENGTH = 4000; // Drastically reduced for blazing fast quiz generation (first page is enough for 5 questions)
+const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || '';
+const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_MODEL = 'mistral-small-latest';
 
 const normalizeToken = (token = '') =>
   token
@@ -469,7 +468,7 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
 };
 
 const generateQuestionsWithAI = async (text) => {
-  if (!GEMINI_QUIZ_ENDPOINT) {
+  if (!MISTRAL_API_KEY) {
     return null;
   }
 
@@ -521,17 +520,22 @@ Rules:
 - Make questions specific and highly relevant to the actual factual content of "${title}".`;
 
   try {
-    const response = await fetch(GEMINI_QUIZ_ENDPOINT, {
+    const response = await fetch(MISTRAL_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${MISTRAL_API_KEY}`,
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.35,
-          topP: 0.9,
-        },
+        model: MISTRAL_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.35,
+        top_p: 0.9,
       }),
     });
 
@@ -540,7 +544,7 @@ Rules:
     }
 
     const payload = await response.json();
-    const responseText = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const responseText = payload?.choices?.[0]?.message?.content;
     if (!responseText) {
       return null;
     }
@@ -678,12 +682,17 @@ const ensureHighQualityQuestions = (text, existingQuestions = []) => {
 };
 
 const generateSmartQuestionsForText = async (text, existingQuestions = []) => {
+  const validExisting = ensureHighQualityQuestions(text, existingQuestions);
+  if (validExisting.length > 0) {
+    return validExisting;
+  }
+
   const aiQuestions = await generateQuestionsWithAI(text);
   if (Array.isArray(aiQuestions) && aiQuestions.length > 0 && !isLowQualityGeneratedQuiz(aiQuestions)) {
     return aiQuestions;
   }
 
-  return ensureHighQualityQuestions(text, existingQuestions);
+  return [];
 };
 
 const buildDefaultQuiz = () => [
@@ -1239,7 +1248,7 @@ const mockHandlers = {
       source,
       fileName,
       mimeType,
-      generatedQuestions: await generateBestQuestionsForText({ title, originalText, darijaText }),
+      generatedQuestions: [], // Quiz is generated on-demand when they open the Games module
       readCount: 0,
       isFavorite: false,
       createdAt: new Date().toISOString(),

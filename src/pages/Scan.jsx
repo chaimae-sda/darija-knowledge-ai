@@ -71,11 +71,26 @@ const Scan = ({ onTextScanned, onBack }) => {
       if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
         throw new Error(t('scan.cameraNotReady'));
       }
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      const MAX_DIM = 1200;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) {
+          height = Math.floor(height * (MAX_DIM / width));
+          width = MAX_DIM;
+        } else {
+          width = Math.floor(width * (MAX_DIM / height));
+          height = MAX_DIM;
+        }
+      }
+      
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      const base64Image = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(video, 0, 0, width, height);
+      
+      // Compress to 0.7 to dramatically speed up upload to Mistral
+      const base64Image = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
       stopCamera();
       const result = await importCapturedImage(base64Image, 'image/jpeg');
       if (onTextScanned) {
