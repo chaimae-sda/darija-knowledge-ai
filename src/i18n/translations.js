@@ -93,6 +93,7 @@ export const translations = {
       sections: {
         saved: 'Mes documents',
         learn: 'Apprendre',
+        audio: 'Histoires audio',
       },
       loading: 'Chargement de tes lectures...',
       emptyTitle: 'Aucun texte trouvé',
@@ -188,18 +189,7 @@ export const translations = {
         collector: 'Collectionneur',
       },
     },
-    quiz: {
-      loading: 'Préparation du quiz...',
-      unavailable: 'Aucun quiz disponible pour ce texte.',
-      title: 'Quiz',
-      quit: 'Quitter',
-      question: 'Question {current}/{total}',
-      chooseAnswer: 'Choisis une réponse pour voir ton score.',
-      bravo: 'Bravo !',
-      keepGoing: 'Continue !',
-      xpEarned: '+{xp} XP pour cette réponse.',
-      wrongAnswer: 'La bonne réponse était juste à côté.',
-    },
+    // Section quiz supprimée
     reading: {
       loading: 'Chargement de la lecture...',
       title: 'Lecture intelligente',
@@ -298,6 +288,7 @@ export const translations = {
       sections: {
         saved: 'My documents',
         learn: 'Learn',
+        audio: 'Audio Stories',
       },
       loading: 'Loading your readings...',
       emptyTitle: 'No text found',
@@ -503,6 +494,7 @@ export const translations = {
       sections: {
         saved: 'الوثائق ديالي',
         learn: 'تعلم',
+        audio: 'قصص صوتية',
       },
       loading: 'كيتشحنو القرايات ديالك...',
       emptyTitle: 'ما لقيناش حتى نص',

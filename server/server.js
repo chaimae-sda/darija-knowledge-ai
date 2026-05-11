@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 5000;
 // Dynamically import modules that depend on environment variables
 const { connectDB } = await import('./config/database.js');
 const authRoutes = await import('./routes/auth.js').then(m => m.default);
+const audioStoriesRoutes = await import('./routes/audioStories.js').then(m => m.default);
 const { authenticateToken, errorHandler } = await import('./middleware/auth.js').then(m => ({ authenticateToken: m.authenticateToken, errorHandler: m.errorHandler }));
 
 // Middleware
@@ -41,6 +42,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/audio-stories', audioStoriesRoutes);
 
 // 404 handler
 app.use((req, res) => {

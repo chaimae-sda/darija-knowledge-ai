@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, Globe, Languages, Pause, Play, RotateCcw, RotateCw, Sparkles, Volume2 } from 'lucide-react';
+import { ChevronLeft, Globe, Pause, Play, RotateCcw, RotateCw, Sparkles, Volume2 } from 'lucide-react';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useI18n } from '../context/I18nContext';
 import { audioService } from '../services/audioService';
@@ -22,7 +22,7 @@ const formatTime = (seconds) => {
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 
-const Reading = ({ textId, onBack, onStartQuiz }) => {
+const Reading = ({ textId, onBack }) => {
   const { t } = useI18n();
   const [text, setText] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -354,10 +354,6 @@ const Reading = ({ textId, onBack, onStartQuiz }) => {
         <button type="button" className="feature-card">
           <Globe size={18} />
           <span>{t('reading.changeLanguage')}</span>
-        </button>
-        <button type="button" className="feature-card feature-card--wide" onClick={onStartQuiz}>
-          <Languages size={18} />
-          <span>{t('reading.startQuiz')} {text.generatedQuestions?.length ? `(${text.generatedQuestions.length})` : ''}</span>
         </button>
       </div>
     </section>

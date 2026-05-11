@@ -4,7 +4,36 @@ import { isSupabaseConnected } from '../config/supabase.js';
 
 const router = express.Router();
 
-// ...existing code...
+// Fallback in-memory users for offline mode
+const fallbackUsers = new Map();
+
+/**
+ * Register a new user
+ */
+router.post('/register', async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email and password required' });
+    }
+
+    // Check if Supabase is connected
+    if (!isSupabaseConnected()) {
+      // Fallback: store in memory
+      const userId = `offline_${Date.now()}`;
+      const user = {
+        _id: userId,
+        username,
+        email,
+        password,
+        level: 1,
+        xp: 0,
+        avatar: '👧',
+        badges: [],
+        stats: {
+          readingTime: 0,
+          quizzesPassed: 0,
           bestStreak: 0
         }
       };
@@ -196,4 +225,3 @@ router.post('/logout', async (req, res) => {
 });
 
 export default router;
-

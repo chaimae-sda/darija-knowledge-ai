@@ -23,18 +23,7 @@ const PATH_POINTS = [
 ];
 
 const XP_PER_LEVEL = 500;
-const MIN_QUIZ_WORDS = 12;
 
-const countWords = (value = '') =>
-  String(value)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
-
-const canBuildQuizFromText = (text) => {
-  const sourceText = `${text?.originalText || ''} ${text?.darijaText || ''}`.trim();
-  return countWords(sourceText) >= MIN_QUIZ_WORDS || (text?.generatedQuestions || []).length > 0;
-};
 
 const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
   const { user } = useContext(AuthContext);
@@ -56,26 +45,10 @@ const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
     loadData();
   }, [user?.xp]);
 
-  const handleNodeClick = (levelId, isUnlocked) => {
-    if (!isUnlocked || !onStartQuiz) return;
-
-    const playableTexts = texts.filter(canBuildQuizFromText);
-
-    if (playableTexts.length === 0) {
-      setShowNoQuestionsPrompt(true);
-      return;
-    }
-
-    const completedTextIds = user?.stats?.completedTextIds || [];
-
-    const unquizzedTexts = playableTexts.filter(
-      (text) => !completedTextIds.includes(text._id)
-    );
-
-    const pool = unquizzedTexts.length > 0 ? unquizzedTexts : playableTexts;
-    const text = pool[(levelId - 1) % pool.length];
-
-    onStartQuiz(text._id);
+  const handleNodeClick = (nodeId, isUnlocked) => {
+    if (!isUnlocked) return;
+    // Quiz logic was removed, we could navigate to library or show a message
+    onNavigate('library');
   };
 
   if (!journeyData) {
@@ -201,40 +174,7 @@ const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
       </div>
 
       {/* POPUP */}
-      {showNoQuestionsPrompt && (
-        <div className="journey-no-questions">
-          <div className="journey-no-questions__card">
-            <button
-              onClick={() => setShowNoQuestionsPrompt(false)}
-            >
-              <X size={18} />
-            </button>
-
-            <div>🎉</div>
-
-            <strong>{t('journey.noQuestionsTitle')}</strong>
-            <p>{t('journey.noQuestionsBody')}</p>
-
-            <button
-              onClick={() => {
-                setShowNoQuestionsPrompt(false);
-                onNavigate?.('scan');
-              }}
-            >
-              <FileUp size={16} /> {t('journey.addMoreDocs')}
-            </button>
-
-            <button
-              onClick={() => {
-                setShowNoQuestionsPrompt(false);
-                onNavigate?.('library');
-              }}
-            >
-              <BookOpen size={16} /> {t('journey.goToLibrary')}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Quiz prompt supprimé */}
     </section>
   );
 };

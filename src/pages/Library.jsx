@@ -12,6 +12,8 @@ const Library = ({ onSelectText }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [activeSection, setActiveSection] = useState('saved');
+  const [audioStories, setAudioStories] = useState([]);
+  const [audioLoading, setAudioLoading] = useState(false);
   const [menuTextId, setMenuTextId] = useState(null);
   const resources = useMemo(() => libraryService.getResources(t), [t]);
 
@@ -32,6 +34,18 @@ const Library = ({ onSelectText }) => {
 
     loadTexts();
   }, []);
+
+  useEffect(() => {
+    if (activeSection === 'audio') {
+      const loadAudioStories = async () => {
+        setAudioLoading(true);
+        const data = await apiClient.getAudioStories();
+        setAudioStories(Array.isArray(data) ? data : []);
+        setAudioLoading(false);
+      };
+      loadAudioStories();
+    }
+  }, [activeSection]);
 
   const filteredTexts = useMemo(
     () =>
@@ -93,9 +107,16 @@ const Library = ({ onSelectText }) => {
         >
           {t('library.sections.learn')}
         </button>
+        <button
+          type="button"
+          className={`section-toggle__button ${activeSection === 'audio' ? 'is-active' : ''}`}
+          onClick={() => setActiveSection('audio')}
+        >
+          {t('library.sections.audio')}
+        </button>
       </div>
 
-      {activeSection === 'saved' ? (
+      {activeSection === 'saved' && (
         <>
           <div className="search-card">
             <Search size={18} />
@@ -208,7 +229,9 @@ const Library = ({ onSelectText }) => {
               ))}
           </div>
         </>
-      ) : (
+      )}
+
+      {activeSection === 'learn' && (
         <section className="resource-section">
           <div className="section-head">
             <h3>{t('library.resourcesTitle')}</h3>
@@ -237,6 +260,43 @@ const Library = ({ onSelectText }) => {
                   ))}
                 </div>
               </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeSection === 'audio' && (
+        <section className="audio-stories-section">
+          <div className="section-head">
+            <h3>{t('library.sections.audio')}</h3>
+          </div>
+          <div className="library-list">
+            {audioLoading && <div className="empty-state">{t('library.loading')}</div>}
+            
+            {!audioLoading && audioStories.length === 0 && (
+              <div className="empty-state">
+                <strong>{t('library.emptyTitle')}</strong>
+                <span>{t('library.emptyBody')}</span>
+              </div>
+            )}
+
+            {!audioLoading && audioStories.map((story) => (
+              <div key={story.id} className="library-card audio-card">
+                <div className="library-card__top">
+                  <span className="source-pill source-pill--audio">Audio</span>
+                  <div className="library-card__actions">
+                    <button type="button" className="mini-icon"><Star size={14} /></button>
+                  </div>
+                </div>
+                <div className="library-card__body">
+                  <h3>{story.title}</h3>
+                  <p>{story.description}</p>
+                </div>
+                <div className="library-card__footer">
+                  <span><Clock3 size={14} /> {formatDate(story.created_at)}</span>
+                  <button type="button" className="text-button">{t('reading.listen')}</button>
+                </div>
+              </div>
             ))}
           </div>
         </section>

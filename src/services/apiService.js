@@ -381,43 +381,7 @@ const generateBestQuestionsForText = async (text) => {
   return generateQuestionsFromText(text);
 };
 
-const generateQuestionsFromText = (text) => {
-  const originalText = text?.originalText?.trim() || text?.original_text?.trim() || '';
-  const darijaText = text?.darijaText?.trim() || text?.darija_text?.trim() || '';
-  const title = text?.title?.trim() || 'هاد الوثيقة';
-  const sourceText = `${originalText} ${darijaText}`.trim();
-
-  if (!sourceText) {
-    return [];
-  }
-
-  const frConcepts = getConceptPool(originalText || sourceText, title);
-  const darijaConcepts = getConceptPool(darijaText || sourceText, title);
-  const allConcepts = getConceptPool(sourceText, title);
-
-  const frPreferredConcepts = getLocaleConcepts(getPreferredConcepts(frConcepts, allConcepts), 'fr', DEFAULT_CONCEPT_FALLBACKS.fr);
-  const enPreferredConcepts = ['main idea', 'key information', 'important detail', 'useful idea', 'related theme'];
-  const darijaPreferredConcepts = getLocaleConcepts(getPreferredConcepts(darijaConcepts, allConcepts), 'darija', DEFAULT_CONCEPT_FALLBACKS.darija);
-  const frSentences = (originalText || sourceText)
-    .split(/[.!?\n]+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 24);
-
-  const darijaSentences = (darijaText || sourceText)
-    .split(/[.!?؟\n]+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 12);
-
-  const firstFrAnswer = frPreferredConcepts[0] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
-  const secondFrAnswer = frPreferredConcepts[1] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
-  const thirdFrAnswer = frPreferredConcepts[2] || DEFAULT_CONCEPT_FALLBACKS.fr[1];
-  const fourthFrAnswer = frPreferredConcepts[3] || DEFAULT_CONCEPT_FALLBACKS.fr[0];
-  const firstEnAnswer = enPreferredConcepts[0] || 'main idea';
-  const secondEnAnswer = enPreferredConcepts[1] || 'key information';
-  const thirdEnAnswer = enPreferredConcepts[2] || 'important detail';
-  const fourthEnAnswer = enPreferredConcepts[3] || 'useful idea';
-  const firstDarijaAnswer = darijaPreferredConcepts[0] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
-  const secondDarijaAnswer = darijaPreferredConcepts[1] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
+// Fonction de génération de questions supprimée (quiz)
   const thirdDarijaAnswer = darijaPreferredConcepts[2] || DEFAULT_CONCEPT_FALLBACKS.darija[1];
   const fourthDarijaAnswer = darijaPreferredConcepts[3] || DEFAULT_CONCEPT_FALLBACKS.darija[0];
 
@@ -1454,28 +1418,7 @@ export const apiClient = {
 
   performOCR: async (base64Image, mimeType = 'image/jpeg') => ocrService.scanImage(base64Image, mimeType),
 
-  getQuizQuestions: async (textId) => {
-    const rows = await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`);
-    const record = rows?.[0];
-    if (!record) {
-      return { error: 'Text not found' };
-    }
-
-    const existingQuestions = Array.isArray(record.generated_questions) ? record.generated_questions : [];
-    const refreshed = await generateSmartQuestionsForText(normalizeTextRecord(record), existingQuestions);
-
-    try {
-      await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`, {
-        method: 'PATCH',
-        body: { generated_questions: refreshed },
-        prefer: 'return=representation',
-      });
-    } catch (error) {
-      console.warn('Unable to persist refreshed quiz questions to Supabase:', error);
-    }
-
-    return refreshed.length ? refreshed : { error: 'No quiz questions available' };
-  },
+  // Méthode getQuizQuestions supprimée (quiz)
 
   getJourneyProgress: async () => buildJourney(await getSupabaseProfile()),
 
@@ -1501,5 +1444,15 @@ export const apiClient = {
 
     await upsertSupabaseProfile(updatedUser);
     return { success: true, xp: updatedUser.xp, level: updatedUser.level };
+  },
+
+  getAudioStories: async () => {
+    const rows = await supabaseRestRequest('/audio_stories?select=*&order=created_at.desc');
+    return rows || [];
+  },
+
+  getAudioStory: async (id) => {
+    const rows = await supabaseRestRequest(`/audio_stories?id=eq.${id}&select=*`);
+    return rows?.[0] || null;
   },
 };

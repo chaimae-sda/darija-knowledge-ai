@@ -8,7 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
-  },
+    },
+      "predeploy": "npm run build",
+      "deploy": "gh-pages -d dist"
+    "homepage": "https://<your-github-username>.github.io/<repo-name>",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.5.0",

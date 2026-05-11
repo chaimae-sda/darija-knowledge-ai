@@ -199,3 +199,73 @@ export const getTextById = async (textId) => {
  * Check if Supabase is connected
  */
 export const isSupabaseConnected = () => supabase !== null;
+
+/**
+ * Get all audio stories
+ */
+export const getAllAudioStories = async () => {
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('audio_stories')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching audio stories:', error);
+      return [];
+    }
+    return data || [];
+  } catch (error) {
+    console.error('Error in getAllAudioStories:', error);
+    return [];
+  }
+};
+
+/**
+ * Get audio story by ID
+ */
+export const getAudioStoryById = async (id) => {
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('audio_stories')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching audio story:', error);
+    }
+    return data;
+  } catch (error) {
+    console.error('Error in getAudioStoryById:', error);
+    return null;
+  }
+};
+
+/**
+ * Create audio story
+ */
+export const createAudioStory = async (storyData) => {
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('audio_stories')
+      .insert(storyData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating audio story:', error);
+      return null;
+    }
+    return data;
+  } catch (error) {
+    console.error('Error in createAudioStory:', error);
+    return null;
+  }
+};

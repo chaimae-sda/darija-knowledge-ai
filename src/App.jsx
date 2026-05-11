@@ -9,7 +9,6 @@ import Home from './pages/Home';
 import Journey from './pages/Journey';
 import Library from './pages/Library';
 import Profile from './pages/Profile';
-import Quiz from './pages/Quiz';
 import Reading from './pages/Reading';
 import Scan from './pages/Scan';
 
@@ -73,23 +72,9 @@ const AppContent = () => {
         title,
         body,
         read: false,
-        createdAt: new Date().toISOString(),
       },
       ...current,
     ]);
-  };
-
-  const scheduleQuizReminder = (textTitle) => {
-    const reminderBody = t('notifications.quizReminderBody', { title: textTitle });
-
-    window.setTimeout(() => {
-      addNotification(t('notifications.quizReminderTitle'), reminderBody);
-
-      if ('Notification' in window && Notification.permission === 'granted') {
-        const notification = new Notification(t('notifications.quizReminderTitle'), { body: reminderBody });
-        notification.onclick = () => window.focus();
-      }
-    }, 45000);
   };
 
   const toggleNotifications = async () => {
@@ -117,18 +102,9 @@ const AppContent = () => {
     setCurrentView({ type: 'reading', id: textId });
   };
 
-  const navigateToQuiz = (textId) => {
-    setCurrentView({ type: 'quiz', id: textId });
-  };
-
   const handleBack = () => {
-    if (currentView.type === 'reading') {
-      navigateToTab('library');
-      return;
-    }
-
-    if (currentView.type === 'quiz') {
-      navigateToTab('journey');
+    if (notificationsOpen) {
+      setNotificationsOpen(false);
       return;
     }
 
@@ -139,12 +115,10 @@ const AppContent = () => {
     const validId = savedText?._id || savedText?.id;
     
     if (validId) {
-      const questionCount = savedText.generatedQuestions?.length || 0;
       addNotification(
         t('notifications.documentReadyTitle'),
-        `${t('notifications.documentReadyBody', { title: savedText.title })}${questionCount ? ` ${questionCount} questions sont prêtes.` : ''}`,
+        t('notifications.documentReadyBody', { title: savedText.title }),
       );
-      scheduleQuizReminder(savedText.title);
       navigateToReading(validId);
       return;
     }
@@ -193,12 +167,8 @@ const AppContent = () => {
   const renderCurrentView = () => {
     if (currentView.type === 'reading') {
       return (
-        <Reading textId={currentView.id} onBack={handleBack} onStartQuiz={() => navigateToQuiz(currentView.id)} />
+        <Reading textId={currentView.id} onBack={handleBack} />
       );
-    }
-
-    if (currentView.type === 'quiz') {
-      return <Quiz textId={currentView.id} onBack={handleBack} onComplete={() => navigateToTab('journey')} />;
     }
 
     switch (activeTab) {
@@ -221,7 +191,7 @@ const AppContent = () => {
       case 'scan':
         return <Scan onBack={() => navigateToTab('home')} onTextScanned={handleTextScanned} />;
       case 'journey':
-        return <Journey onBack={() => navigateToTab('home')} onStartQuiz={navigateToQuiz} onNavigate={navigateToTab} />;
+        return <Journey onBack={() => navigateToTab('home')} onNavigate={navigateToTab} />;
       case 'profile':
         return <Profile />;
       default:
