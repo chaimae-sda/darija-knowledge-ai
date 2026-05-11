@@ -25,30 +25,40 @@ const PATH_POINTS = [
 const XP_PER_LEVEL = 500;
 
 
-const Journey = ({ onBack, onStartQuiz, onNavigate }) => {
+const Journey = ({ onBack, onNavigate, onSelectAudio }) => {
   const { user } = useContext(AuthContext);
   const { t } = useI18n();
 
   const [journeyData, setJourneyData] = useState(null);
-  const [texts, setTexts] = useState([]);
-  const [showNoQuestionsPrompt, setShowNoQuestionsPrompt] = useState(false);
+  const [audioStories, setAudioStories] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
-      const [progress, libraryTexts] = await Promise.all([
-        apiClient.getJourneyProgress(),
-        apiClient.getTexts(),
-      ]);
-      setJourneyData(progress);
-      setTexts(Array.isArray(libraryTexts) ? libraryTexts : []);
+      try {
+        const [progress, stories] = await Promise.all([
+          apiClient.getJourneyProgress(),
+          apiClient.getAudioStories(),
+        ]);
+        setJourneyData(progress);
+        setAudioStories(Array.isArray(stories) ? stories : []);
+      } catch (error) {
+        console.error('Error loading journey data:', error);
+      }
     };
     loadData();
   }, [user?.xp]);
 
   const handleNodeClick = (nodeId, isUnlocked) => {
     if (!isUnlocked) return;
-    // Quiz logic was removed, we could navigate to library or show a message
-    onNavigate('library');
+    
+    // Find story for this node (nodeId is 1-indexed)
+    const story = audioStories[nodeId - 1];
+    if (story) {
+      onSelectAudio(story.id);
+    } else {
+      // Fallback if story doesn't exist for this node
+      onNavigate('library');
+    }
   };
 
   if (!journeyData) {

@@ -11,6 +11,8 @@ import Library from './pages/Library';
 import Profile from './pages/Profile';
 import Reading from './pages/Reading';
 import Scan from './pages/Scan';
+import AudioPlayer from './pages/AudioPlayer';
+import Listen from './pages/Listen';
 
 const NOTIFICATIONS_KEY = 'darija.notifications';
 
@@ -102,9 +104,18 @@ const AppContent = () => {
     setCurrentView({ type: 'reading', id: textId });
   };
 
+  const navigateToAudio = (storyId) => {
+    setCurrentView({ type: 'audio-player', id: storyId });
+  };
+
   const handleBack = () => {
     if (notificationsOpen) {
       setNotificationsOpen(false);
+      return;
+    }
+
+    if (currentView.type !== 'tab') {
+      setCurrentView({ type: 'tab', id: activeTab });
       return;
     }
 
@@ -171,6 +182,12 @@ const AppContent = () => {
       );
     }
 
+    if (currentView.type === 'audio-player') {
+      return (
+        <AudioPlayer storyId={currentView.id} onBack={handleBack} />
+      );
+    }
+
     switch (activeTab) {
       case 'home':
         return (
@@ -187,11 +204,13 @@ const AppContent = () => {
           />
         );
       case 'library':
-        return <Library onSelectText={navigateToReading} />;
+        return <Library onSelectText={navigateToReading} onSelectAudio={navigateToAudio} />;
+      case 'listen':
+        return <Listen onSelectAudio={navigateToAudio} />;
       case 'scan':
         return <Scan onBack={() => navigateToTab('home')} onTextScanned={handleTextScanned} />;
       case 'journey':
-        return <Journey onBack={() => navigateToTab('home')} onNavigate={navigateToTab} />;
+        return <Journey onBack={() => navigateToTab('home')} onNavigate={navigateToTab} onSelectAudio={navigateToAudio} />;
       case 'profile':
         return <Profile />;
       default:

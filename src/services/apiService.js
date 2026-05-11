@@ -1077,13 +1077,26 @@ const loginWithSupabase = async (email, password) => {
   return { token: data.access_token, user: profile };
 };
 
-const registerWithSupabase = async (username, email, password) => {
+const AVATAR_OPTIONS = [
+  { id: 'avatar1', seed: 'Gazi', style: 'adventurer' },
+  { id: 'avatar2', seed: 'Zaki', style: 'adventurer' },
+  { id: 'avatar3', seed: 'Nour', style: 'adventurer' },
+  { id: 'avatar4', seed: 'Amir', style: 'adventurer' },
+];
+
+const getAvatarUrl = (seed, style) =>
+  `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf&backgroundType=gradientLinear`;
+
+const registerWithSupabase = async (username, email, password, avatarId) => {
+  const avatar = AVATAR_OPTIONS.find(a => a.id === avatarId) || AVATAR_OPTIONS[0];
+  const avatarImage = getAvatarUrl(avatar.seed, avatar.style);
+
   const data = await supabaseAuthRequest('/signup', {
     method: 'POST',
     body: JSON.stringify({
       email,
       password,
-      data: { username },
+      data: { username, avatar_url: avatarImage },
     }),
   });
 
@@ -1092,7 +1105,7 @@ const registerWithSupabase = async (username, email, password) => {
   }
 
   persistSessionTokens({ accessToken: data.access_token, refreshToken: data.refresh_token });
-  const profile = await ensureSupabaseProfile(data.user, { username });
+  const profile = await ensureSupabaseProfile(data.user, { username, avatarImage });
   persistSession({
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
@@ -1117,6 +1130,33 @@ const restoreSupabaseSession = async () => {
   return { user: profile, token: accessToken };
 };
 
+const FEATURED_STORIES = [
+  {
+    id: 'f1',
+    title: 'حكاية هاينة والغول',
+    description: 'الأسطورة المغربية الشهيرة هاينة والغول بالدارجة المغربية.',
+    image_url: 'https://img.youtube.com/vi/NXf-uB6aKpA/maxresdefault.jpg',
+    audio_url: 'https://youtu.be/NXf-uB6aKpA',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'f2',
+    title: 'قصة عيشة قنديشة',
+    description: 'أسطورة عيشة قنديشة المرعبة والمشوقة من التراث المغربي.',
+    image_url: 'https://img.youtube.com/vi/wRvsv_h3m7c/maxresdefault.jpg',
+    audio_url: 'https://youtu.be/wRvsv_h3m7c',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'f3',
+    title: 'قصص بالدارجة المغربية',
+    description: 'مجموعة من القصص الممتعة والمعبرة من قلب التراث المغربي.',
+    image_url: 'https://img.youtube.com/vi/j1z6SGHnNAM/maxresdefault.jpg',
+    audio_url: 'https://youtu.be/j1z6SGHnNAM',
+    created_at: new Date().toISOString()
+  }
+];
+
 export const apiClient = {
   USER_SYNC_EVENT,
 
@@ -1130,7 +1170,7 @@ export const apiClient = {
 
   restoreSession: restoreSupabaseSession,
 
-  register: async (username, email, password) => registerWithSupabase(username, email, password),
+  register: async (username, email, password, avatarId) => registerWithSupabase(username, email, password, avatarId),
 
   login: async (email, password) => loginWithSupabase(email, password),
 
@@ -1319,7 +1359,23 @@ export const apiClient = {
 
   performOCR: async (base64Image, mimeType = 'image/jpeg') => ocrService.scanImage(base64Image, mimeType),
 
-  // Méthode getQuizQuestions supprimée (quiz)
+  getQuizQuestions: async (textId) => {
+    const text = await apiClient.getText(textId);
+    if (!text) return [];
+    
+    // Use AI to generate fresh questions
+    const questions = await aiService.generateQuiz(text.title, text.originalText + ' ' + text.darijaText);
+    
+    if (questions && questions.length > 0) {
+      // Save questions back to database for persistence
+      await supabaseRestRequest(`/texts?id=eq.${textId}`, {
+        method: 'PATCH',
+        body: { generated_questions: questions },
+      });
+    }
+
+    return questions || [];
+  },
 
   getJourneyProgress: async () => buildJourney(await getSupabaseProfile()),
 
@@ -1348,11 +1404,19 @@ export const apiClient = {
   },
 
   getAudioStories: async () => {
-    const rows = await supabaseRestRequest('/audio_stories?select=*&order=created_at.desc');
-    return rows || [];
+    try {
+      const rows = await supabaseRestRequest('/audio_stories?select=*&order=created_at.desc');
+      return Array.isArray(rows) && rows.length > 0 ? [...FEATURED_STORIES, ...rows] : FEATURED_STORIES;
+    } catch (error) {
+      console.warn('Backend audio-stories failed, using featured stories.', error);
+      return FEATURED_STORIES;
+    }
   },
 
   getAudioStory: async (id) => {
+    if (id && id.startsWith('f')) {
+      return FEATURED_STORIES.find(s => s.id === id);
+    }
     const rows = await supabaseRestRequest(`/audio_stories?id=eq.${id}&select=*`);
     return rows?.[0] || null;
   },

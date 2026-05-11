@@ -181,7 +181,7 @@ const Auth = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="test@example.com"
+                  placeholder="Email"
                   required
                 />
               </div>

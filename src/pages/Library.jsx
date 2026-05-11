@@ -5,7 +5,7 @@ import { useI18n } from '../context/I18nContext';
 import { apiClient } from '../services/apiService';
 import { libraryService } from '../services/libraryService';
 
-const Library = ({ onSelectText }) => {
+const Library = ({ onSelectText, onSelectAudio }) => {
   const { t, formatDate } = useI18n();
   const [texts, setTexts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -106,13 +106,6 @@ const Library = ({ onSelectText }) => {
           onClick={() => setActiveSection('learn')}
         >
           {t('library.sections.learn')}
-        </button>
-        <button
-          type="button"
-          className={`section-toggle__button ${activeSection === 'audio' ? 'is-active' : ''}`}
-          onClick={() => setActiveSection('audio')}
-        >
-          {t('library.sections.audio')}
         </button>
       </div>
 
@@ -220,9 +213,11 @@ const Library = ({ onSelectText }) => {
                       <BookOpen size={14} />
                       {text.readCount || 0} {t('library.views')}
                     </span>
-                    <span>
+                    <span className={(text.generatedQuestions || []).length > 0 ? 'has-quiz' : 'ready-quiz'}>
                       <HelpCircle size={14} />
-                      {(text.generatedQuestions || []).length} questions
+                      {(text.generatedQuestions || []).length > 0 
+                        ? `${text.generatedQuestions.length} questions` 
+                        : 'Quiz IA prêt'}
                     </span>
                   </div>
                 </div>
@@ -265,42 +260,6 @@ const Library = ({ onSelectText }) => {
         </section>
       )}
 
-      {activeSection === 'audio' && (
-        <section className="audio-stories-section">
-          <div className="section-head">
-            <h3>{t('library.sections.audio')}</h3>
-          </div>
-          <div className="library-list">
-            {audioLoading && <div className="empty-state">{t('library.loading')}</div>}
-            
-            {!audioLoading && audioStories.length === 0 && (
-              <div className="empty-state">
-                <strong>{t('library.emptyTitle')}</strong>
-                <span>{t('library.emptyBody')}</span>
-              </div>
-            )}
-
-            {!audioLoading && audioStories.map((story) => (
-              <div key={story.id} className="library-card audio-card">
-                <div className="library-card__top">
-                  <span className="source-pill source-pill--audio">Audio</span>
-                  <div className="library-card__actions">
-                    <button type="button" className="mini-icon"><Star size={14} /></button>
-                  </div>
-                </div>
-                <div className="library-card__body">
-                  <h3>{story.title}</h3>
-                  <p>{story.description}</p>
-                </div>
-                <div className="library-card__footer">
-                  <span><Clock3 size={14} /> {formatDate(story.created_at)}</span>
-                  <button type="button" className="text-button">{t('reading.listen')}</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </section>
   );
 };

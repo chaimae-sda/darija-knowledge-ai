@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, Globe, Pause, Play, RotateCcw, RotateCw, Sparkles, Volume2 } from 'lucide-react';
+import { ChevronLeft, Globe, HelpCircle, Pause, Play, RotateCcw, RotateCw, Sparkles, Volume2 } from 'lucide-react';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useI18n } from '../context/I18nContext';
 import { audioService } from '../services/audioService';
 import { apiClient } from '../services/apiService';
+import { aiService } from '../services/aiService';
+import Quiz from './Quiz';
 
 const WORDS_PER_MINUTE = 145;
 
@@ -23,11 +25,15 @@ const formatTime = (seconds) => {
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 
 const Reading = ({ textId, onBack }) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [text, setText] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [viewMode, setViewMode] = useState('content');
+  const [viewMode, setViewMode] = useState('content'); // content, audio, quiz, summary
+  const [summary, setSummary] = useState('');
+  const [englishText, setEnglishText] = useState('');
+  const [summarizing, setSummarizing] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [audioProgress, setAudioProgress] = useState({ currentTime: 0, duration: 1 });
   const progressIntervalRef = useRef(null);
@@ -73,6 +79,27 @@ const Reading = ({ textId, onBack }) => {
 
     loadText();
   }, [textId]);
+
+  useEffect(() => {
+    const translateIfNeeded = async () => {
+      if (language === 'en' && text && !englishText) {
+        setTranslating(true);
+        const translated = await aiService.translate(text.originalText, 'en');
+        setEnglishText(translated);
+        setTranslating(false);
+      }
+    };
+    translateIfNeeded();
+  }, [language, text]);
+
+  const handleSummarize = async () => {
+    if (summarizing || !text) return;
+    setSummarizing(true);
+    const result = await aiService.summarize(text.originalText, language);
+    setSummary(result);
+    setSummarizing(false);
+    setViewMode('summary');
+  };
 
   useEffect(
     () => () => {
@@ -311,6 +338,33 @@ const Reading = ({ textId, onBack }) => {
     );
   }
 
+  if (viewMode === 'quiz') {
+    return <Quiz textId={textId} onBack={() => setViewMode('content')} />;
+  }
+  if (viewMode === 'summary') {
+    return (
+      <section className="screen screen--reading">
+        <header className="screen-header">
+          <button type="button" className="icon-chip" onClick={() => setViewMode('content')}>
+            <ChevronLeft size={20} />
+          </button>
+          <h2>Résumé</h2>
+          <LanguageSwitcher />
+        </header>
+        <div className="reading-card reading-card--gold">
+          <div className="reading-card__header">
+            <span>Résumé IA</span>
+            <Sparkles size={16} />
+          </div>
+          <p className={language === 'darija' ? 'text-darija' : ''}>{summary}</p>
+        </div>
+        <button className="action-button action-button--primary" onClick={() => setViewMode('content')}>
+          Retour au texte complet
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className="screen screen--reading">
       <header className="screen-header">
@@ -333,12 +387,18 @@ const Reading = ({ textId, onBack }) => {
 
       <div className="reading-card reading-card--green">
         <div className="reading-card__header">
-          <span>{t('reading.darijaText')}</span>
-          <button type="button" className="mini-icon mini-icon--green" onClick={speakDarija}>
+          <span>{language === 'en' ? 'English Translation' : t('reading.darijaText')}</span>
+          <button type="button" className="mini-icon mini-icon--green" onClick={() => language === 'en' ? speakText(englishText, 'en-US') : speakDarija()}>
             <Volume2 size={16} />
           </button>
         </div>
-        <p className="text-darija">{text.darijaText}</p>
+        {translating ? (
+          <p className="text-muted italic">Translating to English...</p>
+        ) : (
+          <p className={language === 'darija' ? 'text-darija' : ''}>
+            {language === 'en' ? englishText || 'Translation pending...' : text.darijaText}
+          </p>
+        )}
       </div>
 
       <button type="button" className="action-button action-button--success" onClick={() => setViewMode('audio')}>
@@ -347,9 +407,13 @@ const Reading = ({ textId, onBack }) => {
       </button>
 
       <div className="feature-grid">
-        <button type="button" className="feature-card">
-          <Sparkles size={18} />
-          <span>{t('reading.simplify')}</span>
+        <button type="button" className="feature-card" onClick={() => setViewMode('quiz')}>
+          <HelpCircle size={18} />
+          <span>{t('reading.quiz')}</span>
+        </button>
+        <button type="button" className="feature-card" onClick={handleSummarize} disabled={summarizing}>
+          <Sparkles size={18} className={summarizing ? 'spin-anim' : ''} />
+          <span>{summarizing ? 'En cours...' : t('reading.simplify')}</span>
         </button>
         <button type="button" className="feature-card">
           <Globe size={18} />

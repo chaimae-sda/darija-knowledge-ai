@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, ChevronLeft, Gamepad2, Home, ScanLine, User } from 'lucide-react';
+import { BookOpen, ChevronLeft, Headphones, Home, ScanLine, User } from 'lucide-react';
 import { useI18n } from '../context/I18nContext';
 
 const BottomNav = ({ activeTab, onTabChange, isSubView, onBack }) => {
@@ -8,7 +8,7 @@ const BottomNav = ({ activeTab, onTabChange, isSubView, onBack }) => {
     { id: 'home', label: t('nav.home'), Icon: Home },
     { id: 'library', label: t('nav.library'), Icon: BookOpen },
     { id: 'scan', label: t('nav.scan'), Icon: ScanLine, isSpecial: true },
-    { id: 'journey', label: t('nav.journey'), Icon: Gamepad2 },
+    { id: 'listen', label: 'Écouter', Icon: Headphones },
     { id: 'profile', label: t('nav.profile'), Icon: User },
   ];
 

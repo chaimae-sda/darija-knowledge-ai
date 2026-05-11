@@ -63,77 +63,216 @@ const refineToDarija = (text) => {
   return refined;
 };
 
-const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
+const generateMockQuiz = (title) => {
+  return [
+    {
+      questionTextFr: `De quoi parle principalement "${title}" ?`,
+      questionTextDarija: `علاش كيهضر هاد النص "${title}" بشكل أساسي؟`,
+      optionsFr: ["D'une histoire importante", "D'un sujet technique", "D'une information générale"],
+      optionsDarija: ["على قصة مهمة", "على موضوع تقني", "على معلومة عامة"],
+      correctIndex: 0,
+      xpReward: 20
+    },
+    {
+      questionTextFr: `Quel est le ton de "${title}" ?`,
+      questionTextDarija: `كيفاش دايرة اللهجة ديال "${title}"؟`,
+      optionsFr: ["Informatif", "Amusant", "Sérieux"],
+      optionsDarija: ["إخباري", "ممتع", "جدي"],
+      correctIndex: 0,
+      xpReward: 20
+    },
+    {
+      questionTextFr: `Est-ce que "${title}" est facile à comprendre ?`,
+      questionTextDarija: `واش "${title}" ساهل يتفهم؟`,
+      optionsFr: ["Oui, très clair", "C'est un peu difficile", "C'est complexe"],
+      optionsDarija: ["آه، واضح بزاف", "شوية صعيب", "معقد"],
+      correctIndex: 0,
+      xpReward: 20
+    }
+  ];
+};
+
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 
 export const aiService = {
-  translate: async (text) => {
+  translate: async (text, targetLang = 'darija') => {
     if (!text || text.trim().length === 0) return '';
+    if (targetLang === 'fr') return text;
 
-    // If Mistral key is available, use it for genuine authentic Darija translation
-    if (MISTRAL_API_KEY) {
+    const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+    const MISTRAL_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
+
+    if (GOOGLE_API_KEY) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
+        const langName = targetLang === 'darija' ? 'Moroccan Darija (Arabic script)' : (targetLang === 'en' ? 'English' : 'French');
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Translate the following text to ${langName}. Provide ONLY the translation:\n\n${text}` }] }],
+            generationConfig: { temperature: 0.2 }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const translated = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (translated) return translated.trim();
+        }
+      } catch (e) { console.warn('Gemini translation failed'); }
+    }
+
+    if (targetLang === 'darija' && MISTRAL_KEY) {
       try {
         const response = await fetch(MISTRAL_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${MISTRAL_API_KEY}`,
+            Authorization: `Bearer ${MISTRAL_KEY}`,
           },
           body: JSON.stringify({
             model: 'mistral-small-latest',
-            messages: [
-              {
-                role: 'user',
-                content: `Traduisez le texte français suivant en dialecte marocain authentique (Darija) écrit en caractères arabes. Ne fournissez QUE la traduction, sans guillemets, sans commentaires et sans texte supplémentaire:\n\n${text}`,
-              },
-            ],
+            messages: [{ role: 'user', content: `Traduisez le texte français suivant en Darija authentique (caractères arabes). Uniquement la traduction:\n\n${text}` }],
             temperature: 0.3,
           }),
         });
 
-        if (!response.ok) {
-          throw new Error('Mistral API Error');
-        }
-
-        const data = await response.json();
-        const translatedContent = data.choices?.[0]?.message?.content;
-
-        if (translatedContent) {
-          return translatedContent.trim();
-        }
-      } catch (error) {
-        console.error('Mistral translation failed, falling back to MyMemory:', error);
-      }
-    }
-
-    // Fallback to MyMemory heuristic if Gemini fails or is missing
-    try {
-      const maxChars = 400;
-      const chunks = text.match(new RegExp(`.{1,${maxChars}}(\\s|$)`, 'g')) || [text];
-
-      const translatedChunks = await Promise.all(
-        chunks.map(async (chunk) => {
-          const url = `${MY_MEMORY_API}?q=${encodeURIComponent(chunk)}&langpair=fr|ar`;
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`Translation request failed with status ${response.status}`);
-          }
+        if (response.ok) {
           const data = await response.json();
-          const translatedText = data?.responseData?.translatedText?.trim();
-
-          if (!translatedText) {
-            throw new Error('Empty translation response');
-          }
-
-          return translatedText;
-        })
-      );
-
-      const fullArabic = translatedChunks.join(' ');
-      return refineToDarija(fullArabic);
-    } catch (error) {
-      console.error('Translation error:', error);
-      return text;
+          return data.choices?.[0]?.message?.content?.trim();
+        }
+      } catch (e) {}
     }
+
+    try {
+      const targetCode = targetLang === 'en' ? 'en' : 'ar';
+      const url = `${MY_MEMORY_API}?q=${encodeURIComponent(text.slice(0, 500))}&langpair=fr|${targetCode}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      let result = data?.responseData?.translatedText?.trim() || text;
+      return targetLang === 'darija' ? refineToDarija(result) : result;
+    } catch (e) { return text; }
+  },
+
+  summarize: async (text, targetLang = 'fr') => {
+    const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+    const MISTRAL_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
+    
+    const prompt = `Résumez le texte suivant de manière simple et pédagogique pour un enfant de primaire. 
+Langue cible: ${targetLang === 'darija' ? 'Darija Marocain (caractères arabes)' : (targetLang === 'en' ? 'Anglais' : 'Français')}.
+Texte: ${text.slice(0, 5000)}`;
+
+    if (GOOGLE_API_KEY) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.4 }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        }
+      } catch (e) {}
+    }
+
+    if (MISTRAL_KEY) {
+      try {
+        const response = await fetch(MISTRAL_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${MISTRAL_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'mistral-small-latest',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return data.choices?.[0]?.message?.content?.trim();
+        }
+      } catch (e) {}
+    }
+
+    return "Désolé, je n'ai pas pu générer de résumé pour le moment.";
+  },
+
+  generateQuiz: async (textTitle, fullText) => {
+    const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+    const MISTRAL_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
+    
+    const prompt = `Créez 5 questions de compréhension sur "${textTitle}".
+Texte: ${fullText.slice(0, 4000)}
+
+Renvoyez uniquement un tableau JSON:
+[{
+  "questionTextFr": "...",
+  "questionTextDarija": "...",
+  "optionsFr": ["...", "...", "..."],
+  "optionsDarija": ["...", "...", "..."],
+  "correctIndex": 0,
+  "xpReward": 30
+}]`;
+
+    if (GOOGLE_API_KEY) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt + "\nFormat: JSON pur uniquement." }] }],
+            generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (responseText) {
+            const parsed = JSON.parse(responseText.replace(/```json|```/gi, '').trim());
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (MISTRAL_KEY) {
+      try {
+        const response = await fetch(MISTRAL_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${MISTRAL_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'mistral-small-latest',
+            messages: [{ role: 'user', content: prompt + "\nIMPORTANT: Répondez UNIQUEMENT avec le JSON." }],
+            response_format: { type: 'json_object' }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const content = data.choices?.[0]?.message?.content;
+          const parsed = JSON.parse(content);
+          const questions = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.quiz);
+          if (Array.isArray(questions)) return questions;
+        }
+      } catch (e) {}
+    }
+
+    return generateMockQuiz(textTitle);
   },
 };

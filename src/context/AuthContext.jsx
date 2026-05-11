@@ -73,8 +73,8 @@ export const AuthProvider = ({ children }) => {
     throw new Error('Invalid login response');
   };
 
-  const register = async (username, email, password) => {
-    const result = await apiClient.register(username, email, password);
+  const register = async (username, email, password, avatarId) => {
+    const result = await apiClient.register(username, email, password, avatarId);
     if (result.error) {
       throw new Error(result.error);
     }
