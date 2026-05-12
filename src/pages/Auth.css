@@ -52,6 +52,7 @@
   background: rgba(255, 255, 255, 0.16);
   font-size: 0.82rem;
   font-weight: 800;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -88,6 +89,7 @@
   background: rgba(14, 21, 44, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -432,68 +434,81 @@
   .auth-phone {
     min-height: 100vh;
     border-radius: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .auth-showcase {
-    padding: 24px 16px 10px;
+    padding: 16px;
+    flex: 0 0 auto;
   }
 
-  .auth-showcase__badge,
-  .auth-theme-toggle,
-  .auth-language-menu__trigger {
-    min-height: 36px;
+  .auth-showcase__badge {
+    display: none; /* Hide badge to save vertical space */
   }
 
   .auth-showcase__logo {
-    width: 110px;
-    margin: 20px 0 14px;
+    width: 60px; /* Much smaller logo */
+    margin: 4px 0;
   }
 
   .auth-showcase h1 {
-    font-size: 2.3rem;
-  }
-
-  .auth-showcase__brand {
-    font-size: 1rem;
+    font-size: 1.8rem;
   }
 
   .auth-showcase__text {
-    margin: 14px 0 12px;
-    font-size: 0.92rem;
-    line-height: 1.5;
+    display: none; /* Hide description text on mobile */
+  }
+
+  .auth-showcase__image {
+    display: none; /* Hide illustration on mobile to fit form */
   }
 
   .auth-card {
-    padding: 24px 16px 28px;
-    gap: 18px;
+    flex: 1 1 auto;
+    padding: 20px 24px;
+    gap: 12px;
+    border-radius: 28px 28px 0 0;
+    margin-top: -24px;
+    box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.1);
   }
 
   .auth-card__header h2 {
-    margin: 10px 0 6px;
-    font-size: 1.7rem;
+    margin: 4px 0;
+    font-size: 1.4rem;
+  }
+
+  .auth-card__header p.eyebrow,
+  .auth-card__subtext {
+    font-size: 0.8rem;
   }
 
   .auth-form {
-    gap: 14px;
+    gap: 10px;
   }
 
   .field__control,
-  .auth-submit,
-  .auth-demo {
-    min-height: 52px;
-  }
-
-  .auth-card {
-    overflow-y: auto;
-    max-height: 100vh;
+  .auth-submit {
+    min-height: 48px;
+    border-radius: 14px;
   }
 
   .auth-avatar-grid {
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
   }
 
+  .auth-avatar-option {
+    padding: 6px 4px;
+    border-radius: 14px;
+  }
+
   .auth-avatar-option__img {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .auth-avatar-option__name {
+    font-size: 0.6rem;
   }
 }

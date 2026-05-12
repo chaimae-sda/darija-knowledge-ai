@@ -1,1 +1,0 @@
-﻿// Fichier supprimé (test quiz)

@@ -103,25 +103,30 @@ export const aiService = {
     const MISTRAL_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
 
     if (GOOGLE_API_KEY) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
-        const langName = targetLang === 'darija' ? 'Moroccan Darija (Arabic script)' : (targetLang === 'en' ? 'English' : 'French');
-        
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `Translate the following text to ${langName}. Provide ONLY the translation:\n\n${text}` }] }],
-            generationConfig: { temperature: 0.2 }
-          })
-        });
+      const models = ['gemini-flash-2.5-tts-preview', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      for (const modelName of models) {
+        try {
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_API_KEY}`;
+          const langName = targetLang === 'darija' ? 'Moroccan Darija (Arabic script)' : (targetLang === 'en' ? 'English' : 'French');
+          
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `Translate the following text to ${langName}. Provide ONLY the translation:\n\n${text}` }] }],
+              generationConfig: { temperature: 0.2 }
+            })
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          const translated = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (translated) return translated.trim();
+          if (response.ok) {
+            const data = await response.json();
+            const translated = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (translated) return translated.trim();
+          }
+        } catch (e) { 
+          console.warn(`Gemini translation with ${modelName} failed`, e); 
         }
-      } catch (e) { console.warn('Gemini translation failed'); }
+      }
     }
 
     if (targetLang === 'darija' && MISTRAL_KEY) {
@@ -168,22 +173,27 @@ Fournissez le résumé en deux parties:
 Texte: ${text.slice(0, 5000)}`;
 
     if (GOOGLE_API_KEY) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.4 }
-          })
-        });
+      const models = ['gemini-flash-2.5-tts-preview', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      for (const modelName of models) {
+        try {
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_API_KEY}`;
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.4 }
+            })
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (response.ok) {
+            const data = await response.json();
+            return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          }
+        } catch (e) {
+          console.warn(`Gemini summarize with ${modelName} failed`, e);
         }
-      } catch (e) {}
+      }
     }
 
     if (MISTRAL_KEY) {
@@ -229,26 +239,31 @@ Renvoyez uniquement un tableau JSON:
 }]`;
 
     if (GOOGLE_API_KEY) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt + "\nFormat: JSON pur uniquement." }] }],
-            generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
-          })
-        });
+      const models = ['gemini-flash-2.5-tts-preview', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      for (const modelName of models) {
+        try {
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_API_KEY}`;
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt + "\nFormat: JSON pur uniquement." }] }],
+              generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
+            })
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (responseText) {
-            const parsed = JSON.parse(responseText.replace(/```json|```/gi, '').trim());
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (response.ok) {
+            const data = await response.json();
+            const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (responseText) {
+              const parsed = JSON.parse(responseText.replace(/```json|```/gi, '').trim());
+              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
           }
+        } catch (e) {
+          console.warn(`Gemini quiz with ${modelName} failed`, e);
         }
-      } catch (e) {}
+      }
     }
 
     if (MISTRAL_KEY) {
