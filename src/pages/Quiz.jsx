@@ -72,8 +72,8 @@ const Quiz = ({ textId, onBack }) => {
     return (
       <div className="page-feedback">
         <HelpCircle size={48} />
-        <p>Désolé, aucun quiz n'a pu être généré pour ce texte.</p>
-        <button className="action-button" onClick={onBack}>Retour</button>
+        <p>{t('quiz.unavailable')}</p>
+        <button className="action-button" onClick={onBack}>{t('common.back')}</button>
       </div>
     );
   }

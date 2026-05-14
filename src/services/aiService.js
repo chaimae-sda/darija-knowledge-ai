@@ -84,7 +84,7 @@ export const aiService = {
   },
 
   summarize: async (text) => {
-    const prompt = `Résumez le texte suivant de manière simple et pédagogique... [PROMPT] ... Texte: ${text.slice(0, 5000)}`;
+    const prompt = `Résumez le texte suivant de manière simple et pédagogique en 2-3 paragraphes. Utilisez un langage accessible pour les apprenants. Texte: ${text.slice(0, 5000)}`;
 
     if (GOOGLE_API_KEY) {
       try {
@@ -98,13 +98,26 @@ export const aiService = {
           const data = await response.json();
           return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Summarize error:', e);
+      }
     }
     return "Désolé, je n'ai pas pu générer de résumé.";
   },
 
   generateQuiz: async (textTitle, fullText) => {
-    const prompt = `Créez 5 questions de compréhension sur "${textTitle}"... [JSON] ...`;
+    const prompt = `Créez 5 questions de compréhension sur "${textTitle}". Retournez UNIQUEMENT un JSON valide avec cette structure:
+{
+  "questions": [
+    {
+      "question": "Question texte",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctIndex": 0
+    }
+  ]
+}
+Texte: ${fullText.slice(0, 3000)}`;
+
     if (GOOGLE_API_KEY) {
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
@@ -113,15 +126,25 @@ export const aiService = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
+            generationConfig: { temperature: 0.4 }
           })
         });
         if (response.ok) {
           const data = await response.json();
           const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          return JSON.parse(responseText.replace(/```json|```/gi, '').trim());
+          if (responseText) {
+            try {
+              const parsed = JSON.parse(responseText.replace(/```json|```/gi, '').trim());
+              return parsed.questions || [];
+            } catch (parseError) {
+              console.error('JSON parse error:', parseError);
+              return [];
+            }
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Quiz generation error:', e);
+      }
     }
     return [];
   },

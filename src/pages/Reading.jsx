@@ -357,18 +357,18 @@ const Reading = ({ textId, onBack, onAudioModeChange }) => {
           <button type="button" className="icon-chip" onClick={() => setViewMode('content')}>
             <ChevronLeft size={20} />
           </button>
-          <h2>Résumé</h2>
+          <h2>{t('reading.summaryTitle')}</h2>
           <LanguageSwitcher />
         </header>
         <div className="reading-card reading-card--gold">
           <div className="reading-card__header">
-            <span>Résumé IA</span>
+            <span>{t('reading.summaryAI')}</span>
             <Sparkles size={16} />
           </div>
           <p style={{ whiteSpace: 'pre-wrap' }}>{summary}</p>
         </div>
         <button className="action-button action-button--primary" onClick={() => setViewMode('content')}>
-          Retour au texte complet
+          {t('reading.backToFull')}
         </button>
       </section>
     );
@@ -396,13 +396,13 @@ const Reading = ({ textId, onBack, onAudioModeChange }) => {
 
       <div className="reading-card reading-card--green">
         <div className="reading-card__header">
-          <span>{language === 'en' ? 'English Translation' : t('reading.darijaText')}</span>
+          <span>{language === 'en' ? t('reading.englishText') : t('reading.darijaText')}</span>
           <button type="button" className="mini-icon mini-icon--green" onClick={() => language === 'en' ? speakText(englishText, 'en-US') : speakDarija()}>
             <Volume2 size={16} />
           </button>
         </div>
         {translating ? (
-          <p className="text-muted italic">Translating to English...</p>
+          <p className="text-muted italic">{t('reading.translating')}</p>
         ) : (
           <p className={language === 'darija' ? 'text-darija' : ''}>
             {language === 'en' ? englishText || 'Translation pending...' : text.darijaText}
@@ -422,7 +422,7 @@ const Reading = ({ textId, onBack, onAudioModeChange }) => {
         </button>
         <button type="button" className="feature-card" onClick={handleSummarize} disabled={summarizing}>
           <Sparkles size={18} className={summarizing ? 'spin-anim' : ''} />
-          <span>{summarizing ? 'En cours...' : t('reading.simplify')}</span>
+          <span>{summarizing ? t('reading.summarizing') : t('reading.simplify')}</span>
         </button>
       </div>
     </section>
