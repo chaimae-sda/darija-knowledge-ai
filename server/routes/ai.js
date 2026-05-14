@@ -6,6 +6,7 @@ const router = express.Router();
 
 // Initialize Google AI with the server-side key
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const MISTRAL_API_KEY = process.env.VITE_MISTRAL_API_KEY;
 
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 
@@ -32,14 +33,14 @@ router.post('/translate', async (req, res) => {
     console.error('Translation error:', error);
     
     // Fallback to Mistral if Gemini fails and target is Darija
-    if (targetLang === 'darija' && process.env.MISTRAL_API_KEY) {
+    if (targetLang === 'darija' && MISTRAL_API_KEY) {
       try {
         const response = await axios.post(MISTRAL_URL, {
           model: 'mistral-small-latest',
           messages: [{ role: 'user', content: `Traduisez le texte français suivant en Darija authentique (caractères arabes). Uniquement la traduction:\n\n${text}` }],
           temperature: 0.3,
         }, {
-          headers: { Authorization: `Bearer ${process.env.MISTRAL_API_KEY}` }
+          headers: { Authorization: `Bearer ${MISTRAL_API_KEY}` }
         });
         return res.json({ translation: response.data.choices[0].message.content.trim() });
       } catch (mistralError) {

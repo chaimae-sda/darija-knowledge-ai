@@ -372,8 +372,17 @@ const buildFallbackOptions = (
 };
 
 const generateBestQuestionsForText = async (text) => {
-  // Quiz module has been deactivated. Returning empty array for now.
-  return [];
+  const questions = await generateSmartQuestionsForText(text);
+  if (Array.isArray(questions) && questions.length > 0) {
+    return questions;
+  }
+
+  const fallbackQuestions = await aiService.generateQuiz(
+    text?.title || 'document',
+    `${text?.originalText || text?.original_text || ''} ${text?.darijaText || text?.darija_text || ''}`,
+  );
+
+  return normalizeQuestionSet(fallbackQuestions, text?._id || text?.id || 'doc');
 };
 
 const generateQuestionsFromText = (text) => {
@@ -396,16 +405,24 @@ const parseJsonArray = (value = '') => {
 };
 
 const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
+  const fallbackOptions = Array.isArray(rawQuestion?.options) ? rawQuestion.options : [];
+  const fallbackQuestion =
+    rawQuestion?.question ||
+    rawQuestion?.questionText ||
+    rawQuestion?.questionTextFr ||
+    rawQuestion?.questionFr ||
+    '';
+
   const normalizedOptions = dedupeCaseInsensitive(
-    (Array.isArray(rawQuestion?.optionsFr) ? rawQuestion.optionsFr : rawQuestion?.options || [])
+    (Array.isArray(rawQuestion?.optionsFr) ? rawQuestion.optionsFr : fallbackOptions)
       .map((option) => String(option || '').trim())
-      .filter((option) => option && !hasArabicScript(option)),
+      .filter(Boolean),
   );
 
   const normalizedOptionsDarija = dedupeCaseInsensitive(
-    (Array.isArray(rawQuestion?.optionsDarija) ? rawQuestion.optionsDarija : rawQuestion?.options || [])
+    (Array.isArray(rawQuestion?.optionsDarija) ? rawQuestion.optionsDarija : fallbackOptions)
       .map((option) => String(option || '').trim())
-      .filter((option) => option && hasArabicScript(option)),
+      .filter(Boolean),
   );
 
   if (normalizedOptions.length < 2 || normalizedOptionsDarija.length < 2) {
@@ -416,9 +433,9 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
   const baseDarijaOptions = normalizedOptionsDarija.slice(0, 3);
 
   const rawEnOptions = dedupeCaseInsensitive(
-    (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : [])
+    (Array.isArray(rawQuestion?.optionsEn) ? rawQuestion.optionsEn : normalizedOptions)
       .map((option) => String(option || '').trim())
-      .filter((option) => option && !hasArabicScript(option)),
+      .filter(Boolean),
   );
 
   if (rawEnOptions.length < 2) {
@@ -426,27 +443,30 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
   }
   const baseEnOptions = rawEnOptions.slice(0, 3);
 
-  const getCorrect = (options, directAnswer) => {
+  const getCorrectIndex = (options, directAnswer) => {
     const indexFromText = options.findIndex((option) => normalizeToken(option) === normalizeToken(directAnswer));
     const indexFromRaw = Number.isInteger(rawQuestion?.correctIndex) ? rawQuestion.correctIndex : -1;
-    const index =
+    return (
       indexFromText >= 0
         ? indexFromText
         : indexFromRaw >= 0 && indexFromRaw < options.length
           ? indexFromRaw
-          : 0;
-    return options[index];
+          : 0
+    );
   };
 
-  const correctFr = getCorrect(baseFrOptions, rawQuestion?.correctAnswerFr || rawQuestion?.correctAnswer);
-  const correctEn = getCorrect(baseEnOptions, rawQuestion?.correctAnswerEn || rawQuestion?.correctAnswer || correctFr);
-  const correctDarija = getCorrect(baseDarijaOptions, rawQuestion?.correctAnswerDarija || rawQuestion?.correctAnswer || correctFr);
+  const correctIndex = getCorrectIndex(baseFrOptions, rawQuestion?.correctAnswerFr || rawQuestion?.correctAnswer);
+  const correctFr = baseFrOptions[correctIndex] || baseFrOptions[0];
+  const correctEnIndex = getCorrectIndex(baseEnOptions, rawQuestion?.correctAnswerEn || rawQuestion?.correctAnswer || correctFr);
+  const correctDarijaIndex = getCorrectIndex(baseDarijaOptions, rawQuestion?.correctAnswerDarija || rawQuestion?.correctAnswer || correctFr);
+  const correctEn = baseEnOptions[correctEnIndex] || baseEnOptions[correctIndex] || baseEnOptions[0];
+  const correctDarija = baseDarijaOptions[correctDarijaIndex] || baseDarijaOptions[correctIndex] || baseDarijaOptions[0];
 
   return {
     _id: rawQuestion?._id || `q_${textId}_${index + 1}`,
-    questionTextFr: String(rawQuestion?.questionTextFr || rawQuestion?.questionFr || rawQuestion?.question || '').trim(),
-    questionTextEn: String(rawQuestion?.questionTextEn || rawQuestion?.questionEn || rawQuestion?.question || '').trim(),
-    questionTextDarija: String(rawQuestion?.questionTextDarija || rawQuestion?.questionDarija || rawQuestion?.question || '').trim(),
+    questionTextFr: String(rawQuestion?.questionTextFr || rawQuestion?.questionFr || fallbackQuestion).trim(),
+    questionTextEn: String(rawQuestion?.questionTextEn || rawQuestion?.questionEn || fallbackQuestion).trim(),
+    questionTextDarija: String(rawQuestion?.questionTextDarija || rawQuestion?.questionDarija || fallbackQuestion).trim(),
     correctAnswerFr: correctFr,
     correctAnswerEn: correctEn,
     correctAnswerDarija: correctDarija,
@@ -455,9 +475,20 @@ const normalizeAiQuestion = (rawQuestion, index, textId = 'doc') => {
     optionsDarija: baseDarijaOptions,
     correctAnswer: correctDarija,
     options: baseDarijaOptions,
+    correctIndex,
     xpReward: Number.isFinite(rawQuestion?.xpReward) ? rawQuestion.xpReward : 30,
     engineVersion: QUIZ_ENGINE_VERSION,
   };
+};
+
+const normalizeQuestionSet = (questions = [], textId = 'doc') => {
+  if (!Array.isArray(questions)) {
+    return [];
+  }
+
+  return questions
+    .map((question, index) => normalizeAiQuestion(question, index, textId))
+    .filter((question) => question && (question.questionTextFr || question.questionTextDarija));
 };
 
 const generateQuestionsWithAI = async (text) => {
@@ -1360,21 +1391,25 @@ export const apiClient = {
   performOCR: async (base64Image, mimeType = 'image/jpeg') => ocrService.scanImage(base64Image, mimeType),
 
   getQuizQuestions: async (textId) => {
-    const text = await apiClient.getText(textId);
-    if (!text) return [];
-    
-    // Use AI to generate fresh questions
-    const questions = await aiService.generateQuiz(text.title, text.originalText + ' ' + text.darijaText);
-    
-    if (questions && questions.length > 0) {
-      // Save questions back to database for persistence
+    const rows = await supabaseRestRequest(`/texts?id=eq.${textId}&select=*`);
+    const rawText = rows?.[0];
+    if (!rawText) return [];
+
+    const text = normalizeTextRecord(rawText);
+    if (Array.isArray(text.generatedQuestions) && text.generatedQuestions.length > 0) {
+      return text.generatedQuestions;
+    }
+
+    const questions = await generateBestQuestionsForText(text);
+
+    if (questions.length > 0) {
       await supabaseRestRequest(`/texts?id=eq.${textId}`, {
         method: 'PATCH',
         body: { generated_questions: questions },
       });
     }
 
-    return questions || [];
+    return questions;
   },
 
   getJourneyProgress: async () => buildJourney(await getSupabaseProfile()),

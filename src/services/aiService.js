@@ -1,7 +1,55 @@
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
-const MISTRAL_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
+const MISTRAL_KEY = import.meta.env.VITE_MISTRAL_API_KEY || '';
 const MY_MEMORY_API = 'https://api.mymemory.translated.net/get';
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
+
+const parseQuizResponse = (value = '') => {
+  const cleaned = String(value || '').replace(/```json|```/gi, '').trim();
+  const candidates = [
+    cleaned,
+    cleaned.match(/\{[\s\S]*\}/)?.[0],
+    cleaned.match(/\[[\s\S]*\]/)?.[0],
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      if (Array.isArray(parsed?.questions)) {
+        return parsed.questions;
+      }
+    } catch {
+      // Try the next candidate shape.
+    }
+  }
+
+  return [];
+};
+
+const callMistral = async (prompt, temperature = 0.35) => {
+  if (!MISTRAL_KEY) {
+    return '';
+  }
+
+  const response = await fetch(MISTRAL_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${MISTRAL_KEY}` },
+    body: JSON.stringify({
+      model: 'mistral-large-latest',
+      messages: [{ role: 'user', content: prompt }],
+      temperature,
+    }),
+  });
+
+  if (!response.ok) {
+    return '';
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+};
 
 /**
  * Darija Heuristic Layer
@@ -70,7 +118,9 @@ export const aiService = {
           const data = await response.json();
           return data.choices?.[0]?.message?.content?.trim();
         }
-      } catch (e) {}
+      } catch {
+        console.warn('Mistral translation failed');
+      }
     }
 
     try {
@@ -80,7 +130,9 @@ export const aiService = {
       const data = await response.json();
       let result = data?.responseData?.translatedText?.trim() || text;
       return targetLang === 'darija' ? refineToDarija(result) : result;
-    } catch (e) { return text; }
+    } catch {
+      return text;
+    }
   },
 
   summarize: async (text) => {
@@ -102,6 +154,16 @@ export const aiService = {
         console.error('Summarize error:', e);
       }
     }
+
+    try {
+      const mistralSummary = await callMistral(prompt, 0.35);
+      if (mistralSummary) {
+        return mistralSummary;
+      }
+    } catch (e) {
+      console.error('Mistral summarize error:', e);
+    }
+
     return "Désolé, je n'ai pas pu générer de résumé.";
   },
 
@@ -133,12 +195,9 @@ Texte: ${fullText.slice(0, 3000)}`;
           const data = await response.json();
           const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (responseText) {
-            try {
-              const parsed = JSON.parse(responseText.replace(/```json|```/gi, '').trim());
-              return parsed.questions || [];
-            } catch (parseError) {
-              console.error('JSON parse error:', parseError);
-              return [];
+            const parsed = parseQuizResponse(responseText);
+            if (parsed.length > 0) {
+              return parsed;
             }
           }
         }
@@ -146,6 +205,14 @@ Texte: ${fullText.slice(0, 3000)}`;
         console.error('Quiz generation error:', e);
       }
     }
+
+    try {
+      const mistralResponse = await callMistral(`${prompt}\n\nRépondez seulement avec le JSON demandé, sans markdown.`, 0.35);
+      return parseQuizResponse(mistralResponse);
+    } catch (e) {
+      console.error('Mistral quiz generation error:', e);
+    }
+
     return [];
   },
 };

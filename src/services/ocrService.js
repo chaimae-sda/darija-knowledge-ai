@@ -1,6 +1,6 @@
 import { aiService } from './aiService';
 
-const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY;
+const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || '';
 const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
 const MISTRAL_MODEL = 'pixtral-large-latest';
 
@@ -37,25 +37,9 @@ const loadPdfJs = async () => {
   return pdfModulePromise;
 };
 
-/**
- * When no Mistral key is available (local dev), extract text from the image
- * using the browser's built-in canvas API and return a useful placeholder.
- * For PDFs we can still extract text via PDF.js text layer, so this only
- * applies to images captured from the camera / file-imported images.
- */
-const mockOcrFromImage = (mimeType) => {
-  const placeholders = [
-    "Ceci est un document importé depuis la caméra. Le texte sera extrait et traduit en darija dès que la clé API Mistral sera configurée.",
-    "Document pris en photo avec succès. Veuillez configurer VITE_MISTRAL_API_KEY dans le fichier .env pour activer l'extraction de texte.",
-  ];
-  return placeholders[Math.floor(Math.random() * placeholders.length)];
-};
-
 const recognizeImageWithMistral = async (base64Image, mimeType = 'image/jpeg') => {
   if (!MISTRAL_API_KEY) {
-    // Graceful fallback: return helpful placeholder instead of crashing
-    console.warn('[ocrService] VITE_MISTRAL_API_KEY not set — using mock OCR result.');
-    return mockOcrFromImage(mimeType);
+    throw new Error('Mistral API key is missing. Configure VITE_MISTRAL_API_KEY before building the app.');
   }
 
   const response = await fetch(MISTRAL_API_URL, {
